@@ -112,6 +112,8 @@
                 <span id="hangarSlotsIndicator" class="bg-green-200 text-green-800 text-sm font-bold px-3 py-2 rounded-full">1</span>
             </div>
             <button id="purchaseRunwayBtn" class="purchase-btn bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-600 transition-colors">Next Level ($1000)</button>
+            <button id="purchaseTowerBtn" class="purchase-btn bg-purple-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-purple-600 transition-colors">Tower Control (auto-land)</button>
+            <button id="purchaseGlideScopeBtn" class="purchase-btn bg-pink-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-pink-600 transition-colors hidden">Glide Scope</button>
         </div>
         
         <!-- Modals -->
@@ -398,7 +400,8 @@
             activeFeaturesList, vipToggle, cargoToggle, emergencyToggle,
             visualEffectsToggle, soundEffectsToggle, musicToggle, goAroundsToggle, runwayClosuresToggle, dayNightCycleToggle, stormsToggle,
             dayNightIndicator, sunIcon, moonIcon, walletDisplay, purchasePlaneBtn, purchaseRunwayBtn, godModeToggle,
-            zoomInButton, zoomOutButton, hangarSlotsIndicator, sameColorCollisionToggle, differentColorCollisionToggle;
+            zoomInButton, zoomOutButton, hangarSlotsIndicator, sameColorCollisionToggle, differentColorCollisionToggle,
+            purchaseTowerBtn, purchaseGlideScopeBtn;
         
         // =================================================================================
         // Game State Variables
@@ -437,6 +440,9 @@
         let runwayClosureTriggerCount = -1;
         let runwayClosureHasHappenedThisLevel = false;
         let camera = { x: 0, y: 0, zoom: 1 };
+        let towerControlActive = false;
+        let glideScopeActive = false;
+        let radarSweepAngle = 0;
         
         // =================================================================================
         // Audio State
@@ -497,6 +503,7 @@
         const ISLAND_WIDTH = 500;
         const ISLAND_HEIGHT = 400;
         const AIRPORT_LAYOUT_RADIUS = 200;
+        const TOWER_CONTROL_RADIUS = AIRPORT_LAYOUT_RADIUS + 30; // Tower radius matches the concrete pad
         const WORLD_BOUNDARY = 800;
         const COLORS = {
             yellow: { main: '#FBBF24', dark: '#D97706', light: '#FCD34D' },
@@ -766,6 +773,7 @@
                 hasBeenOnScreen: false,
                 collisionImmunityTimer: 0,
                 collisionRadius: (PLANE_SIZE / 2.5) * scaleFactor,
+                prevOrbitAngle: 0, // For glide scope detection
             };
             
             return plane;
@@ -1237,6 +1245,85 @@
             ctx.restore();
         }
 
+        function drawTowerAndRadar() {
+            if (!towerControlActive) return;
+
+            const centerX = 0;
+            const centerY = 0;
+
+            // Draw the dotted line border for the radar
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, TOWER_CONTROL_RADIUS, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 12]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+
+            // Draw the sweeping radar gradient
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, TOWER_CONTROL_RADIUS, 0, Math.PI * 2);
+            ctx.clip(); // Clip the drawing to the tower radius
+
+            const gradient = ctx.createConicGradient(radarSweepAngle, centerX, centerY);
+            gradient.addColorStop(0, 'rgba(74, 222, 128, 0)');
+            gradient.addColorStop(0.02, 'rgba(74, 222, 128, 0.4)'); // A thin line of dim green
+            gradient.addColorStop(0.04, 'rgba(74, 222, 128, 0)');
+            gradient.addColorStop(1, 'rgba(74, 222, 128, 0)');
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(centerX - TOWER_CONTROL_RADIUS, centerY - TOWER_CONTROL_RADIUS, TOWER_CONTROL_RADIUS * 2, TOWER_CONTROL_RADIUS * 2);
+            ctx.restore();
+
+            // Draw the tower itself
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            // Base
+            ctx.fillStyle = '#6B7280'; // gray-500
+            ctx.fillRect(-15, 10, 30, 5);
+            // Shaft
+            ctx.fillStyle = '#4B5563'; // gray-600
+            ctx.fillRect(-5, -20, 10, 30);
+            // Top
+            ctx.fillStyle = '#374151'; // gray-700
+            ctx.beginPath();
+            ctx.moveTo(-12, -20);
+            ctx.lineTo(12, -20);
+            ctx.lineTo(10, -30);
+            ctx.lineTo(-10, -30);
+            ctx.closePath();
+            ctx.fill();
+            // Antenna
+            ctx.strokeStyle = '#9CA3AF'; // gray-400
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, -30);
+            ctx.lineTo(0, -40);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(0, -40, 2, 0, Math.PI * 2);
+            ctx.fillStyle = '#F87171'; // red-400
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawGlideScope() {
+            if (!glideScopeActive) return;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(0, TOWER_CONTROL_RADIUS);
+            ctx.lineTo(0, HOLDING_PATTERN_RADIUS);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 12]);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+
         // --- Update Functions (called from main loop) ---
         function updatePlanes(delta) {
             for (let i = planes.length - 1; i >= 0; i--) {
@@ -1264,7 +1351,7 @@
                 if (settings.fuelSystem) {
                     plane.fuel -= 0.05 * delta;
                     if (plane.fuel <= 0 && !plane.crashed) {
-                        triggerCrash(plane); // FIX: Decoupled from endGame
+                        triggerCrash(plane);
                     }
                 }
                 
@@ -1306,7 +1393,7 @@
                             }
 
                             if (!isProperLanding) {
-                                triggerCrash(plane); // FIX: Decoupled from endGame
+                                triggerCrash(plane);
                             } else {
                                 plane.landed = true;
                                 plane.angle = plane.finalAngle;
@@ -1339,6 +1426,7 @@
                     }
                 } else { 
                     if (plane.isOrbiting) {
+                        plane.prevOrbitAngle = plane.orbitAngle;
                         const centerX = 0;
                         const centerY = 0;
                         plane.orbitAngle += (plane.speed / plane.orbitRadius) * plane.orbitDirection * delta;
@@ -1347,6 +1435,21 @@
                         plane.angle = Math.atan2(targetY - plane.y, targetX - plane.x);
                         plane.x = targetX;
                         plane.y = targetY;
+
+                        // Check for glide scope intersection if active
+                        if (glideScopeActive) {
+                            const glideScopeAngle = Math.PI / 2;
+                            const prevAngle = (plane.prevOrbitAngle % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+                            const currentAngle = (plane.orbitAngle % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+
+                            if ( (plane.orbitDirection > 0 && prevAngle < glideScopeAngle && currentAngle >= glideScopeAngle) ||
+                                 (plane.orbitDirection < 0 && prevAngle > glideScopeAngle && currentAngle <= glideScopeAngle) ) {
+                                plane.isOrbiting = false;
+                                plane.path = [{ x: 0, y: TOWER_CONTROL_RADIUS }];
+                                createNotification("Entering Glide Scope", plane.x, plane.y - 30, 'rgba(168, 85, 247, 0.9)');
+                            }
+                        }
+
                     } else {
                         const centerX = 0;
                         const centerY = 0;
@@ -1360,6 +1463,7 @@
                                 plane.isOrbiting = true;
                                 plane.orbitRadius = distToCenter;
                                 plane.orbitAngle = Math.atan2(plane.y - centerY, plane.x - centerX);
+                                plane.prevOrbitAngle = plane.orbitAngle;
                                 plane.orbitDirection = holdingPatternDirection;
                                 createNotification("Entered holding pattern", plane.x, plane.y - 30);
                             }
@@ -1367,6 +1471,22 @@
                         
                         plane.x += Math.cos(plane.angle) * plane.speed * delta;
                         plane.y += Math.sin(plane.angle) * plane.speed * delta;
+                    }
+                }
+
+                // --- Tower Control Auto-Land Logic ---
+                if (towerControlActive && !plane.isLanding && !plane.isOrbiting && !plane.isGoAround && plane.path.length === 0) {
+                    const distToCenter = distance(plane, { x: 0, y: 0 });
+                    if (distToCenter < TOWER_CONTROL_RADIUS) {
+                        const targetAirport = airports.find(a => a.color === plane.color && !a.isClosed);
+                        if (targetAirport) {
+                            plane.isLanding = true;
+                            plane.targetAirport = targetAirport;
+                            plane.finalAngle = targetAirport.angle;
+                            plane.path = [{ x: targetAirport.x, y: targetAirport.y }];
+                            plane.collisionImmunityTimer = 2000; // Give it immunity as it starts its approach
+                            createNotification("Tower Control: Auto-landing", plane.x, plane.y - 30, 'rgba(168, 85, 247, 0.9)');
+                        }
                     }
                 }
 
@@ -1387,7 +1507,7 @@
                     } 
                     
                     if (plane.type === 'emergency' && !plane.crashed) {
-                        triggerCrash(plane); // FIX: Decoupled from endGame
+                        triggerCrash(plane);
                         continue; 
                     } 
                     
@@ -1515,6 +1635,10 @@
                 }
             }
 
+            if (towerControlActive) {
+                radarSweepAngle = (radarSweepAngle + 0.02 * delta);
+            }
+
             gameTimer += deltaTime;
             timeSinceLastGoAround += deltaTime;
             updateTimerDisplay();
@@ -1557,18 +1681,13 @@
             updateNotifications(delta);
             updateWaterRipples(delta);
 
-            // =================================================================================
-            // START: Fixed Collision and Game Over Logic
-            // =================================================================================
             let gameOverReason = null;
 
-            // --- Collision Detection Loop ---
             for (let i = 0; i < planes.length; i++) {
                 for (let j = i + 1; j < planes.length; j++) {
                     const plane1 = planes[i];
                     const plane2 = planes[j];
 
-                    // Skip check if planes are invalid, landed, already crashed, immune, etc.
                     if (!plane1 || !plane2 || plane1.landed || plane2.landed || plane1.crashed || plane2.crashed || plane1.isGoAround || plane2.isGoAround || plane1.collisionImmunityTimer > 0 || plane2.collisionImmunityTimer > 0) {
                         continue;
                     }
@@ -1577,7 +1696,6 @@
                     const combinedRadius = plane1.collisionRadius + plane2.collisionRadius;
                     const sameColor = plane1.color === plane2.color;
 
-                    // --- Go-Around Logic (Near Miss) ---
                     if (settings.goArounds && dist < GO_AROUND_RADIUS && timeSinceLastGoAround >= 60000) {
                         const planeToReroute = plane1.spawnTime > plane2.spawnTime ? plane1 : plane2;
                         if (!planeToReroute.isGoAround) {
@@ -1589,23 +1707,21 @@
                             createNotification("GO AROUND!", planeToReroute.x, planeToReroute.y - 30, 'rgba(239, 68, 68, 0.9)');
                             timeSinceLastGoAround = 0;
                         }
-                        continue; // A go-around was initiated, so skip crash check for this pair
+                        continue;
                     }
                     
-                    // --- Crash Logic ---
                     const collisionRuleApplies = (sameColor && settings.sameColorCollision) || (!sameColor && settings.differentColorCollision);
 
                     if (collisionRuleApplies && dist < combinedRadius) {
                         triggerCrash(plane1);
                         triggerCrash(plane2);
                         gameOverReason = "A mid-air collision occurred!";
-                        break; // A crash happened, exit inner loop
+                        break;
                     }
                 }
-                if (gameOverReason) break; // Exit outer loop if a crash was found
+                if (gameOverReason) break;
             }
 
-            // --- Check for other game-over conditions if no collision occurred ---
             if (!gameOverReason) {
                 for (const plane of planes) {
                     if (plane.crashed) {
@@ -1621,18 +1737,14 @@
                         } else {
                             gameOverReason = "An improper landing approach occurred!";
                         }
-                        break; // Found a crashed plane, no need to check others
+                        break;
                     }
                 }
             }
 
-            // --- Trigger End Game if a reason was found ---
             if (gameOverReason) {
                 endGame(gameOverReason);
             }
-            // =================================================================================
-            // END: Fixed Collision and Game Over Logic
-            // =================================================================================
         }
         
         function gameLoop(timestamp) {
@@ -1654,6 +1766,8 @@
 
             drawBackground();
             drawWaterRipples();
+            drawTowerAndRadar();
+            drawGlideScope();
             drawWind();
             drawHoldingPattern();
             airports.forEach(drawAirport);
@@ -1678,8 +1792,6 @@
             }
         }
         
-        // FIX: This function now only handles the state and effects for a single plane.
-        // The game-ending logic is handled separately in the main update loop.
         function triggerCrash(plane) {
             if (plane.crashed || settings.godMode) return;
             plane.crashed = true;
@@ -1743,6 +1855,8 @@
             runwayClosure.airportId = null;
             runwayClosure.timer = 0;
             runwayClosureHasHappenedThisLevel = false;
+            towerControlActive = false;
+            glideScopeActive = false;
             if (level >= 3 && settings.runwayClosures) {
                 const totalPlanes = getPlanesToLandForLevel(level);
                 runwayClosureTriggerCount = Math.floor(Math.random() * (totalPlanes - 2)) + 1;
@@ -1923,6 +2037,14 @@
             return Math.round(cost / 50) * 50;
         }
 
+        function getTowerControlCost() {
+            return Math.round((getNextLevelCost() * 0.7) / 50) * 50;
+        }
+
+        function getGlideScopeCost() {
+            return Math.round((getNextLevelCost() * 0.9) / 50) * 50;
+        }
+
         function updateWalletDisplay() {
             if (walletEl) {
                 walletEl.textContent = `$${score}`;
@@ -1938,10 +2060,33 @@
         function updatePurchaseButtons() {
             const planeCost = getHangarUpgradeCost();
             const nextLevelCost = getNextLevelCost();
+            const towerCost = getTowerControlCost();
+            const glideScopeCost = getGlideScopeCost();
+
             purchasePlaneBtn.textContent = `Hangar Slot +1 ($${planeCost})`;
             purchasePlaneBtn.disabled = score < planeCost;
+            
             purchaseRunwayBtn.textContent = `Next Level ($${nextLevelCost})`;
             purchaseRunwayBtn.disabled = score < nextLevelCost;
+            
+            if (towerControlActive) {
+                 purchaseTowerBtn.textContent = 'Tower Control: Active';
+                 purchaseTowerBtn.disabled = true;
+            } else {
+                purchaseTowerBtn.textContent = `Tower Control ($${towerCost})`;
+                purchaseTowerBtn.disabled = score < towerCost;
+            }
+
+            purchaseGlideScopeBtn.classList.toggle('hidden', !towerControlActive);
+            if (glideScopeActive) {
+                purchaseGlideScopeBtn.textContent = 'Glide Scope: Active';
+                purchaseGlideScopeBtn.disabled = true;
+            } else {
+                purchaseGlideScopeBtn.textContent = `Glide Scope ($${glideScopeCost})`;
+                purchaseGlideScopeBtn.disabled = score < glideScopeCost;
+            }
+
+
             hangarSlotsIndicator.textContent = simultaneousPlanes;
         }
 
@@ -2121,6 +2266,8 @@
             activeFeaturesList.innerHTML = '';
             const features = [
                 { name: `Hangar Slots: ${simultaneousPlanes}`, enabled: true},
+                { name: 'Tower Control', enabled: towerControlActive },
+                { name: 'Glide Scope', enabled: glideScopeActive },
                 { name: 'Fuel System', enabled: settings.fuelSystem }, { name: 'Global Wind', enabled: settings.wind }, { name: 'Aesthetic Clouds', enabled: settings.clouds },
                 { name: 'Plane Sizes', enabled: settings.planeSizes }, { name: 'Realistic Landing', enabled: settings.realisticLanding }, { name: 'VIP Planes', enabled: settings.vipPlanes },
                 { name: 'Cargo Planes', enabled: settings.cargoPlanes }, { name: 'Emergency Planes', enabled: settings.emergencyPlanes },
@@ -2137,6 +2284,12 @@
                     featureEl.textContent = `• ${feature.name}`;
                     if (feature.name === 'GOD MODE') {
                         featureEl.classList.add('text-red-500', 'font-bold');
+                    }
+                    if (feature.name === 'Tower Control') {
+                        featureEl.classList.add('text-purple-600', 'font-bold');
+                    }
+                     if (feature.name === 'Glide Scope') {
+                        featureEl.classList.add('text-pink-600', 'font-bold');
                     }
                     activeFeaturesList.appendChild(featureEl);
                 }
@@ -2266,6 +2419,7 @@
                     selectedPlane.isOrbiting = true;
                     selectedPlane.orbitRadius = distance(worldPos, {x: 0, y: 0});
                     selectedPlane.orbitAngle = Math.atan2(worldPos.y, worldPos.x);
+                    selectedPlane.prevOrbitAngle = selectedPlane.orbitAngle;
                     selectedPlane.orbitDirection = holdingPatternDirection;
                     landingAssigned = true; // Set to true to prevent path assignment below
                     createNotification("Entered holding pattern", selectedPlane.x, selectedPlane.y - 30);
@@ -2346,6 +2500,8 @@
             moonIcon = document.getElementById('moonIcon');
             purchasePlaneBtn = document.getElementById('purchasePlaneBtn');
             purchaseRunwayBtn = document.getElementById('purchaseRunwayBtn');
+            purchaseTowerBtn = document.getElementById('purchaseTowerBtn');
+            purchaseGlideScopeBtn = document.getElementById('purchaseGlideScopeBtn');
             zoomInButton = document.getElementById('zoomInButton');
             zoomOutButton = document.getElementById('zoomOutButton');
             hangarSlotsIndicator = document.getElementById('hangarSlotsIndicator');
@@ -2483,6 +2639,28 @@
                     updateWalletDisplay();
                     levelUp();
                     playSound('purchase', 'C5', '4n');
+                }
+            });
+
+            purchaseTowerBtn.addEventListener('click', () => {
+                const cost = getTowerControlCost();
+                if (score >= cost && !towerControlActive) {
+                    score -= cost;
+                    towerControlActive = true;
+                    updateWalletDisplay();
+                    updateActiveFeaturesDisplay();
+                    playSound('purchase', 'A4', '8n');
+                }
+            });
+
+            purchaseGlideScopeBtn.addEventListener('click', () => {
+                const cost = getGlideScopeCost();
+                if (score >= cost && towerControlActive && !glideScopeActive) {
+                    score -= cost;
+                    glideScopeActive = true;
+                    updateWalletDisplay();
+                    updateActiveFeaturesDisplay();
+                    playSound('purchase', 'B4', '8n');
                 }
             });
 
