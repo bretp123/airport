@@ -1,0 +1,2578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airport Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            touch-action: none;
+        }
+        canvas {
+            background-color: #3B82F6; /* Deeper water blue */
+            cursor: crosshair;
+            display: block;
+        }
+        .ui-panel {
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(5px);
+        }
+        .modal {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        .tab-button.active {
+            border-color: #4f46e5;
+            background-color: #eef2ff;
+            color: #4f46e5;
+        }
+        input:checked + label {
+            font-weight: 600;
+        }
+        .purchase-btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 flex items-center justify-center h-screen">
+
+    <div id="game-container" class="w-full h-full md:w-4/5 md:h-4/5 lg:w-3/5 lg:h-5/6 shadow-2xl rounded-lg overflow-hidden relative">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- UI Container -->
+        <div id="inGameUI" class="absolute top-4 left-4 flex-col gap-2 z-10">
+            <!-- Info Panel -->
+            <div class="ui-panel p-3 rounded-lg shadow-md">
+                <div class="flex items-center justify-between gap-4">
+                    <div id="infoToggle" class="text-gray-800 cursor-pointer select-none p-1" title="Toggle Details">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </div>
+                    <div id="walletDisplay" class="text-lg font-bold text-green-700">$0</div>
+                </div>
+                <div id="infoPanelDetails" class="hidden mt-2">
+                    <div class="flex items-center gap-2 mb-2">
+                        <button id="fullscreenButton" title="Toggle Fullscreen" class="text-gray-600 hover:text-gray-900 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
+                            <svg id="expandIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                            <svg id="shrinkIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+                        </button>
+                        <button id="settingsButton" title="Settings" class="text-blue-600 hover:text-blue-800 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        </button>
+                        <button id="zoomInButton" title="Zoom In" class="text-gray-600 hover:text-gray-900 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                        <button id="zoomOutButton" title="Zoom Out" class="text-gray-600 hover:text-gray-900 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                        <button id="levelSelectButton" title="Select Level" class="text-green-600 hover:text-green-800 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        </button>
+                        <button id="restartGameButton" title="Restart Level" class="text-yellow-600 hover:text-red-600 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                        </button>
+                    </div>
+                    <div class="mt-2 text-gray-700 text-sm space-y-1">
+                        <div class="flex justify-between gap-4"><strong>Wallet <span id="scoreMultiplierLabel">(x1.0)</span>:</strong> <span id="wallet">$0</span></div>
+                        <div class="flex justify-between"><strong>Level:</strong> <span id="level">1</span></div>
+                        <div class="flex justify-between"><strong>Planes Left:</strong> <span id="planesLeft">3</span></div>
+                        <div class="flex justify-between"><strong>Time:</strong> <span id="timer">00:00</span></div>
+                    </div>
+                    <div id="activeFeaturesList" class="mt-2 border-t pt-2 text-xs text-gray-600 space-y-1"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute top-4 right-4 flex gap-2">
+             <div id="dayNightIndicator" class="hidden ui-panel p-2 rounded-full shadow-md flex items-center justify-center w-16 h-16 overflow-hidden">
+                <div class="relative w-full h-full">
+                    <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute top-1/2 left-1/2 text-yellow-500" style="transform: translate(-50%, 20px);"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                    <svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute top-1/2 left-1/2 text-slate-400" style="transform: translate(-50%, -20px);"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                </div>
+            </div>
+            <div id="windIndicator" class="hidden ui-panel p-2 rounded-full shadow-md flex items-center justify-center w-16 h-16">
+                <svg id="windArrow" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 transition-transform duration-500"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+            </div>
+        </div>
+
+        <!-- Tip Banner -->
+        <div id="tipBanner" class="absolute bottom-4 left-1/2 -translate-x-1/2 ui-panel px-4 py-2 rounded-lg text-gray-800 font-semibold text-center z-20">
+            Tip: Guide planes to their matching runways!
+        </div>
+
+        <!-- Purchase Buttons -->
+        <div id="purchaseControls" class="absolute bottom-4 left-4 flex flex-col gap-2 z-20">
+             <div class="flex items-center gap-2">
+                <button id="purchasePlaneBtn" class="purchase-btn bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-green-600 transition-colors">Hangar Slot +1</button>
+                <span id="hangarSlotsIndicator" class="bg-green-200 text-green-800 text-sm font-bold px-3 py-2 rounded-full">1</span>
+            </div>
+            <button id="purchaseRunwayBtn" class="purchase-btn bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-600 transition-colors">Next Level ($1000)</button>
+        </div>
+        
+        <!-- Modals -->
+        <div id="settingsModal" class="hidden modal absolute inset-0 flex items-center justify-center z-30">
+                <div class="bg-white p-8 rounded-lg shadow-xl max-w-lg w-full">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-4 text-center">Game Designer</h2>
+                    
+                    <div class="border-b border-gray-200 mb-4">
+                        <nav class="-mb-px flex space-x-4" aria-label="Tabs">
+                            <button class="tab-button active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="difficulty">Difficulty</button>
+                            <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="features">Gameplay</button>
+                            <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="planes">Plane Types</button>
+                            <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="effects">Effects</button>
+                        </nav>
+                    </div>
+
+                    <div id="difficultyContent" class="tab-content">
+                        <div class="space-y-4 text-left">
+                            <div>
+                                <label for="planeSpeedSlider" class="block text-sm font-medium text-gray-700">Plane Speed</label>
+                                <input id="planeSpeedSlider" type="range" min="1" max="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                            <div>
+                                <label for="spawnRateSlider" class="block text-sm font-medium text-gray-700">Spawn Rate (Faster &rarr;)</label>
+                                <input id="spawnRateSlider" type="range" min="1" max="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="featuresContent" class="tab-content hidden">
+                        <div class="grid grid-cols-2 gap-4 text-left">
+                            <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="fuelToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="fuelToggle" class="font-medium text-gray-700">Fuel System</label>
+                                </div>
+                            </div>
+                            <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="windToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="windToggle" class="font-medium text-gray-700">Global Wind</label>
+                                </div>
+                            </div>
+                            <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="cloudsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="cloudsToggle" class="font-medium text-gray-700">Aesthetic Clouds</label>
+                                </div>
+                            </div>
+                            <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="coinsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="coinsToggle" class="font-medium text-gray-700">Coins</label>
+                                </div>
+                            </div>
+                            <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="goAroundsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="goAroundsToggle" class="font-medium text-gray-700">Automatic Go-Arounds</label>
+                                    <p class="text-gray-500 text-xs">Planes avoid near-collisions.</p>
+                                </div>
+                            </div>
+                             <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="runwayClosuresToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="runwayClosuresToggle" class="font-medium text-gray-700">Runway Closures</label>
+                                </div>
+                            </div>
+                            <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="dayNightCycleToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="dayNightCycleToggle" class="font-medium text-gray-700">Day/Night Cycle</label>
+                                </div>
+                            </div>
+                             <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="stormsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="stormsToggle" class="font-medium text-gray-700">Storms</label>
+                                    <p class="text-gray-500 text-xs">Localized rain and wind.</p>
+                                </div>
+                            </div>
+                            <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="sameColorCollisionToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="sameColorCollisionToggle" class="font-medium text-gray-700">Same Color Collisions</label>
+                                </div>
+                            </div>
+                            <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="godModeToggle" type="checkbox" class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="godModeToggle" class="font-medium text-gray-700">God Mode ($1M)</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <label for="holdingPatternSlider" class="block text-sm font-medium text-gray-700">Holding Pattern Limit (per color): <span id="holdingPatternLabel">1</span></label>
+                            <input id="holdingPatternSlider" type="range" min="0" max="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            <p class="text-xs text-gray-500">0 = Off, 5 = Unlimited</p>
+                        </div>
+                    </div>
+
+                    <div id="planesContent" class="tab-content hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-left">
+                            <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="planeSizesToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="planeSizesToggle" class="font-medium text-gray-700">Different Plane Sizes</label>
+                                    <p class="text-gray-500 text-xs">Small, medium, & large planes.</p>
+                                </div>
+                            </div>
+                            <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="realisticLandingToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="realisticLandingToggle" class="font-medium text-gray-700">Realistic Landing</label>
+                                    <p class="text-gray-500 text-xs">Approach from front/back.</p>
+                                </div>
+                            </div>
+                             <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="vipToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="vipToggle" class="font-medium text-gray-700">VIP Planes</label>
+                                    <p class="text-gray-500 text-xs">Fast, high-value (purple).</p>
+                                </div>
+                            </div>
+                             <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="cargoToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="cargoToggle" class="font-medium text-gray-700">Cargo Planes</label>
+                                    <p class="text-gray-500 text-xs">Slow, valuable (green).</p>
+                                </div>
+                            </div>
+                             <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="emergencyToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="emergencyToggle" class="font-medium text-gray-700">Emergency Planes</label>
+                                    <p class="text-gray-500 text-xs">Urgent, high-risk (red).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="effectsContent" class="tab-content hidden">
+                         <div class="grid grid-cols-2 gap-4 text-left">
+                            <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="visualEffectsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="visualEffectsToggle" class="font-medium text-gray-700">Visual FX</label>
+                                </div>
+                            </div>
+                            <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="soundEffectsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="soundEffectsToggle" class="font-medium text-gray-700">Sound FX</label>
+                                </div>
+                            </div>
+                             <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="musicToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="musicToggle" class="font-medium text-gray-700">Music</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center pt-6 border-t border-gray-200 mt-6">
+                        <p class="text-lg">Total Difficulty Multiplier: <span id="difficultyLabel" class="font-bold">x1.5</span></p>
+                    </div>
+
+                    <div class="mt-8 w-full flex gap-4">
+                        <button id="closeSettingsButton" class="w-1/2 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+                            Close
+                        </button>
+                        <button id="saveAndRestartButton" class="w-1/2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+                            Save & Restart
+                        </button>
+                    </div>
+                </div>
+        </div>
+
+        <div id="levelSelectModal" class="hidden modal absolute inset-0 flex items-center justify-center z-30">
+                <div class="bg-white p-8 rounded-lg shadow-xl text-center max-w-lg w-full">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold text-gray-800">Select Level</h2>
+                        <button id="closeLevelSelectButton" class="text-gray-500 hover:text-gray-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                    <div id="levelGrid" class="grid grid-cols-4 md:grid-cols-5 gap-4 max-h-64 overflow-y-auto pr-2">
+                        <!-- Level buttons will be generated here -->
+                    </div>
+                </div>
+        </div>
+
+        <div id="gameOverModal" class="hidden modal absolute inset-0 flex items-center justify-center z-20">
+            <div class="bg-white p-8 rounded-lg shadow-xl text-center max-w-md w-full">
+                <h2 class="text-3xl font-bold text-red-600">Game Over</h2>
+                <p id="gameOverMessage" class="mt-2 text-gray-700">A plane has crashed!</p>
+                <p class="mt-2 text-gray-700">Final Balance: <span id="finalBalance">$0</span></p>
+                <div class="flex gap-4 mt-6 justify-center">
+                    <button id="restartLevelButton" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
+                        Restart Level
+                    </button>
+                    <button id="restartModalButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
+                        New Game
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="levelCompleteModal" class="hidden modal absolute inset-0 flex items-center justify-center z-20">
+            <div class="bg-white p-8 rounded-lg shadow-xl text-center">
+                <h2 class="text-3xl font-bold text-green-500">Level Complete!</h2>
+                <p class="mt-2 text-gray-700">Get ready for Level <span id="nextLevel">2</span>.</p>
+                <button id="nextLevelButton" class="mt-6 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
+                    Start Next Level
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // =================================================================================
+        // Firebase Integration
+        // =================================================================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // =================================================================================
+        // DOM Element References
+        // =================================================================================
+        let canvas, ctx, gameContainer, inGameUI, walletEl, levelEl, planesLeftEl, timerEl,
+            scoreMultiplierLabel, gameOverModal, finalBalanceEl, gameOverMessage, restartModalButton,
+            restartLevelButton, restartGameButton, levelCompleteModal, nextLevelEl, nextLevelButton,
+            levelSelectModal, levelSelectButton, closeLevelSelectButton, levelGrid, tipBanner,
+            settingsModal, settingsButton, saveAndRestartButton, closeSettingsButton, planeSpeedSlider, spawnRateSlider,
+            difficultyLabel, fuelToggle, windToggle, cloudsToggle, windIndicator, windArrow,
+            windSpeed, fullscreenButton, expandIcon, shrinkIcon, holdingPatternSlider, holdingPatternLabel, 
+            coinsToggle, planeSizesToggle, realisticLandingToggle, infoToggle, infoPanelDetails, 
+            activeFeaturesList, vipToggle, cargoToggle, emergencyToggle,
+            visualEffectsToggle, soundEffectsToggle, musicToggle, goAroundsToggle, runwayClosuresToggle, dayNightCycleToggle, stormsToggle,
+            dayNightIndicator, sunIcon, moonIcon, walletDisplay, purchasePlaneBtn, purchaseRunwayBtn, godModeToggle,
+            zoomInButton, zoomOutButton, hangarSlotsIndicator, sameColorCollisionToggle;
+        
+        // =================================================================================
+        // Game State Variables
+        // =================================================================================
+        let planes = [];
+        let airports = [];
+        let islandShape = [];
+        let trees = [];
+        let scorePopups = [];
+        let notifications = [];
+        let windParticles = [];
+        let stormClouds = [];
+        let aestheticClouds = [];
+        let effects = [];
+        let coins = [];
+        let waterRipples = [];
+        let levelAnnouncement = { text: '', opacity: 0, scale: 1 };
+        let score = 0; // Represents the wallet balance
+        let level = 1;
+        let simultaneousPlanes = 1; // Number of planes allowed at once
+        let gameRunning = false;
+        let isPaused = false;
+        let selectedPlane = null;
+        let path = [];
+        let planesLanded = 0;
+        let planesSpawnedThisLevel = 0;
+        let animationFrameId;
+        let gameTimer = 0;
+        let timeSinceLastBonus = 0;
+        let timeSinceLastSpawn = 0;
+        let timeSinceLastGoAround = 60000;
+        let lastFrameTime;
+        let dayNightCycle = { time: 0, duration: 240000 }; // 4 minutes for a full cycle
+        let runwayClosure = { airportId: null, timer: 0 };
+        let holdingPatternDirection = 1;
+        let runwayClosureTriggerCount = -1;
+        let runwayClosureHasHappenedThisLevel = false;
+        let camera = { x: 0, y: 0, zoom: 1 };
+        
+        // =================================================================================
+        // Audio State
+        // =================================================================================
+        let audioInitialized = false;
+        let sounds = {};
+        let musicPlayer;
+        let soundCooldowns = {};
+
+        // =================================================================================
+        // Firebase & Settings State
+        // =================================================================================
+        let db, auth, userId;
+        let highestLevel = 1;
+        let settings = {
+            speed: 50,
+            spawnRate: 50,
+            fuelSystem: false,
+            wind: false,
+            clouds: true,
+            holdingPattern: 1,
+            coins: false,
+            planeSizes: false,
+            realisticLanding: false,
+            vipPlanes: false,
+            cargoPlanes: false,
+            emergencyPlanes: false,
+            visualEffects: true,
+            soundEffects: true,
+            music: true,
+            goArounds: false,
+            runwayClosures: false,
+            dayNightCycleToggle: false,
+            stormsToggle: false,
+            godMode: false,
+            sameColorCollision: false,
+        };
+        let wind = { angle: 0, speed: 0 };
+
+        // =================================================================================
+        // Game Configuration Constants
+        // =================================================================================
+        const PLANE_SIZE = 40;
+        const AIRPORT_WIDTH = 200;
+        const AIRPORT_HEIGHT = 50;
+        const COLLISION_RADIUS = PLANE_SIZE / 2.5;
+        const GO_AROUND_RADIUS = COLLISION_RADIUS * 3;
+        const LANDING_ZONE_PADDING = 15;
+        const MAX_LANDING_TIME = 35000;
+        const MIN_LANDING_TIME = 10000;
+        const MAX_SCORE = 150;
+        const MIN_SCORE = 20;
+        const COIN_VALUE = 50;
+        const COIN_RADIUS = 15;
+        const GO_AROUND_PENALTY = -25;
+        const HOLDING_PATTERN_RADIUS = 400;
+        const ISLAND_WIDTH = 500;
+        const ISLAND_HEIGHT = 400;
+        const AIRPORT_LAYOUT_RADIUS = 200;
+        const WORLD_BOUNDARY = 800;
+        const COLORS = {
+            yellow: { main: '#FBBF24', dark: '#D97706', light: '#FCD34D' },
+            red: { main: '#F87171', dark: '#DC2626', light: '#FCA5A5' },
+            blue: { main: '#60A5FA', dark: '#2563EB', light: '#93C5FD' },
+            green: { main: '#4ADE80', dark: '#16A34A', light: '#86EFAC' },
+            purple: { main: '#A78BFA', dark: '#7C3AED', light: '#C4B5FD' }
+        };
+
+        // --- Audio Functions ---
+        function initializeAudio() {
+            if (audioInitialized) return;
+            Tone.start();
+            
+            sounds.uiClick = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 0.1 } }).toDestination();
+            sounds.uiConfirm = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.2 } }).toDestination();
+            
+            const landingThump = new Tone.MembraneSynth({ pitchDecay: 0.01, octaves: 2, envelope: { attack: 0.001, decay: 0.3, sustain: 0 } }).toDestination();
+            const landingChime = new Tone.Synth({ oscillator: {type: 'sine'}, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 } }).toDestination();
+            sounds.landing = () => {
+                const now = Tone.now();
+                landingThump.triggerAttackRelease("C2", "8n", now);
+                landingChime.triggerAttackRelease("C5", "8n", now + 0.05);
+            };
+
+            sounds.crash = new Tone.MembraneSynth({ pitchDecay: 0.5, octaves: 5, envelope: { attack: 0.01, decay: 0.8, sustain: 0.1, release: 1.2 } }).toDestination();
+            sounds.coin = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.1 } }).toDestination();
+            sounds.purchase = new Tone.Synth({ oscillator: { type: 'sawtooth' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.1 } }).toDestination();
+            sounds.thunder = new Tone.NoiseSynth({ noise: {type: 'pink'}, envelope: {attack: 0.1, decay: 1.5, sustain: 0}}).toDestination();
+            sounds.thunder.volume.value = -10;
+
+            // Retro Background Music
+            const synth = new Tone.PolySynth(Tone.FMSynth, {
+                harmonicity: 1.5,
+                modulationIndex: 1.2,
+                envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.1 },
+            }).toDestination();
+            synth.volume.value = -18;
+
+            const pattern = new Tone.Sequence((time, note) => {
+                synth.triggerAttackRelease(note, "8n", time);
+            }, ["C4", "E4", "G4", "B4", "G4", "E4"], "4n");
+            
+            pattern.loop = true;
+            musicPlayer = pattern;
+            Tone.Transport.bpm.value = 120;
+
+            if(settings.music) {
+                Tone.Transport.start();
+                musicPlayer.start(0);
+            }
+
+            audioInitialized = true;
+        }
+
+        function playSound(sound, note = null, duration = '8n', cooldown = 0) {
+            if (!audioInitialized || !settings.soundEffects) return;
+            
+            const now = Tone.now();
+            if (cooldown > 0) {
+                if (soundCooldowns[sound] && now < soundCooldowns[sound]) {
+                    return; 
+                }
+                soundCooldowns[sound] = now + cooldown;
+            }
+
+            if (sounds[sound]) {
+                if (typeof sounds[sound] === 'function') {
+                    sounds[sound]();
+                } else if (note) {
+                    sounds[sound].triggerAttackRelease(note, duration);
+                } else {
+                    sounds[sound].triggerAttackRelease(duration);
+                }
+            }
+        }
+        
+        function toggleMusic(enabled) {
+            if (!audioInitialized) return;
+            if (enabled) {
+                Tone.Transport.start();
+            } else {
+                Tone.Transport.stop();
+            }
+        }
+
+        // --- Firebase Functions ---
+        async function initializeFirebase() {
+            try {
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('debug');
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                userId = auth.currentUser.uid;
+                await loadGameState();
+                openSettings(true);
+
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                openSettings(true);
+            }
+        }
+
+        async function saveGameState(newHighestLevel) {
+            if (!userId || !db) return;
+            try {
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const gameStateRef = doc(db, `artifacts/${appId}/users/${userId}/airportControl`, 'gameState');
+                await setDoc(gameStateRef, { highestLevel: newHighestLevel }, { merge: true });
+            } catch (error) {
+                console.error("Error saving game state:", error);
+            }
+        }
+
+        async function loadGameState() {
+            if (!userId || !db) return;
+            try {
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const gameStateRef = doc(db, `artifacts/${appId}/users/${userId}/airportControl`, 'gameState');
+                const docSnap = await getDoc(gameStateRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    highestLevel = data.highestLevel || 1;
+                }
+            } catch (error) {
+                console.error("Error loading game state:", error);
+            }
+        }
+
+        // --- Game Logic & Rules ---
+        function getPlanesToLandForLevel(lvl) {
+            return 5 * lvl;
+        }
+
+        function getNumRunwaysForLevel(lvl) {
+            if (lvl < 3) {
+                return 1;
+            }
+            return Math.min(5, 2 + Math.floor((lvl - 3) / 2));
+        }
+
+        function updateTipBanner(message = null) {
+            let tip = message;
+            if (!tip) {
+                const tips = [
+                    "Guide planes to their matching runways!",
+                    "Select a plane and press 'F' for manual control!"
+                ];
+                if (settings.goArounds) tips.push("Use the Go-Around button to avoid collisions!");
+                if (settings.runwayClosures) tips.push("Watch out for closed runways!");
+                if (settings.stormsToggle) tips.push("Be prepared for sudden weather changes!");
+                if (settings.emergencyPlanes) tips.push("Emergency planes cannot enter a holding pattern!");
+                tip = tips[Math.floor(Math.random() * tips.length)];
+            }
+            tipBanner.textContent = `Tip: ${tip}`;
+            tipBanner.style.display = 'block';
+            setTimeout(() => {
+                tipBanner.style.display = 'none';
+            }, 5000);
+        }
+
+        function resizeCanvas() {
+            canvas.width = gameContainer.clientWidth;
+            canvas.height = gameContainer.clientHeight;
+        }
+
+        function getRandomPositionOutsideCanvas() {
+            const side = Math.floor(Math.random() * 4);
+            let x, y;
+            const boundary = WORLD_BOUNDARY + PLANE_SIZE;
+            switch (side) {
+                case 0: x = Math.random() * boundary * 2 - boundary; y = -boundary; break;
+                case 1: x = boundary; y = Math.random() * boundary * 2 - boundary; break;
+                case 2: x = Math.random() * boundary * 2 - boundary; y = boundary; break;
+                case 3: x = -boundary; y = Math.random() * boundary * 2 - boundary; break;
+            }
+            return { x, y };
+        }
+
+        function distance(point1, point2) {
+            return Math.sqrt(Math.pow(point1.x - point2.x, 2) + Math.pow(point1.y - point2.y, 2));
+        }
+        
+        function diffAngle(a, b) {
+            let d = a - b;
+            while (d <= -Math.PI) d += 2 * Math.PI;
+            while (d > Math.PI) d -= 2 * Math.PI;
+            return d;
+        }
+
+        function createPlane(forceType = null, forceColor = null) {
+            const position = getRandomPositionOutsideCanvas();
+            let angleToCenter = Math.atan2(0 - position.y, 0 - position.x);
+            const angleDeviation = (Math.random() - 0.5) * (Math.PI / 2);
+            
+            const runwayColors = airports.map(a => a.color);
+            if (runwayColors.length === 0) return null;
+            
+            const color = forceColor || runwayColors[Math.floor(Math.random() * runwayColors.length)];
+            
+            let size = 'medium';
+            let speedModifier = 1;
+            let type = 'normal';
+            let fuel = 100;
+
+            if (forceType) {
+                type = forceType;
+            } else {
+                const specialPlaneRoll = Math.random();
+                if(settings.emergencyPlanes && specialPlaneRoll < 0.15) {
+                    type = 'emergency';
+                } else if (settings.vipPlanes && specialPlaneRoll < 0.3) {
+                    type = 'vip';
+                } else if (settings.cargoPlanes && specialPlaneRoll < 0.45) {
+                    type = 'cargo';
+                }
+            }
+
+            switch(type) {
+                case 'emergency': speedModifier = 1.4; fuel = 75; break;
+                case 'vip': speedModifier = 1.2; break;
+                case 'cargo': size = 'large'; speedModifier = 0.7; break;
+                case 'normal':
+                    if (settings.planeSizes) {
+                        const rand = Math.random();
+                        if (rand < 0.3) { size = 'small'; speedModifier = 1.2; }
+                        else if (rand > 0.7) { size = 'large'; speedModifier = 0.8; }
+                    }
+                    break;
+            }
+
+            const baseSpeed = (0.5 + (settings.speed / 100) * 2.5) * speedModifier;
+
+            const plane = {
+                x: position.x, y: position.y,
+                angle: angleToCenter + angleDeviation,
+                speed: baseSpeed + (level * 0.04),
+                path: [],
+                trail: [],
+                isGoAround: false,
+                isSelected: false, isLanding: false, landed: false, crashed: false,
+                color: color, type: type, size: size,
+                spawnTime: Date.now(),
+                fuel: fuel, maxFuel: fuel,
+                isOrbiting: false, orbitRadius: 0, orbitAngle: 0,
+                orbitDirection: 1,
+                opacity: 1, finalAngle: 0,
+                hasBeenOnScreen: false,
+                isCrashing: false, // Add new state for death spiral
+                collisionImmunityTimer: 0,
+            };
+            
+            return plane;
+        }
+
+        function initializeAirports() {
+            airports = [];
+            const centerX = 0;
+            const centerY = 0;
+            const numRunways = getNumRunwaysForLevel(level);
+            const availableColors = Object.keys(COLORS).slice(0, numRunways);
+            
+            const layoutRadius = numRunways > 1 ? AIRPORT_LAYOUT_RADIUS : 0;
+            
+            for (let i = 0; i < numRunways; i++) {
+                const angle = (i / numRunways) * 2 * Math.PI;
+                airports.push({
+                    id: `${availableColors[i]}_runway`,
+                    x: centerX + Math.cos(angle) * layoutRadius,
+                    y: centerY + Math.sin(angle) * layoutRadius,
+                    width: AIRPORT_WIDTH,
+                    height: AIRPORT_HEIGHT,
+                    color: availableColors[i],
+                    angle: Math.random() * Math.PI * 2,
+                    runwayNumber: Math.floor(Math.random() * 36) + 1,
+                    approachFlash: 0,
+                    isClosed: false,
+                });
+            }
+        }
+
+        // --- Drawing & Rendering Functions ---
+        function isPointInPolygon(point, polygon) {
+            let isInside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i].x, yi = polygon[i].y;
+                const xj = polygon[j].x, yj = polygon[j].y;
+
+                const intersect = ((yi > point.y) !== (yj > point.y))
+                    && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+                if (intersect) isInside = !isInside;
+            }
+            return isInside;
+        }
+        
+        function generateIslandShape() {
+            islandShape = [];
+            trees = [];
+            const centerX = 0;
+            const centerY = 0;
+            
+            const points = 12;
+            
+            for (let i = 0; i < points; i++) {
+                const angle = (i / points) * 2 * Math.PI;
+                const radius = 1 + (Math.random() - 0.5) * 0.25;
+                const x = centerX + ISLAND_WIDTH * radius * Math.cos(angle);
+                const y = centerY + ISLAND_HEIGHT * radius * Math.sin(angle);
+                islandShape.push({x, y});
+            }
+
+            const numTrees = 50;
+            const airportPadRadius = AIRPORT_LAYOUT_RADIUS + 30;
+            for (let i = 0; i < numTrees; i++) {
+                const randX = centerX + (Math.random() - 0.5) * ISLAND_WIDTH * 2;
+                const randY = centerY + (Math.random() - 0.5) * ISLAND_HEIGHT * 2;
+                if (isPointInPolygon({x: randX, y: randY}, islandShape)) {
+                    if (distance({x: randX, y: randY}, {x: centerX, y: centerY}) > airportPadRadius) {
+                        trees.push({ x: randX, y: randY, radius: 5 + Math.random() * 5, color: `rgba(21, 128, 61, ${0.5 + Math.random() * 0.5})` });
+                    }
+                }
+            }
+        }
+
+        function drawBackground() {
+            const centerX = 0;
+            const centerY = 0;
+            
+            let skyColors = getSkyColors();
+            // This gradient is in world space, so it will move with the camera. Let's make it static.
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to draw background
+            const screenCenterX = canvas.width / 2;
+            const screenCenterY = canvas.height / 2;
+            const gradient = ctx.createRadialGradient(screenCenterX, screenCenterY, canvas.width * 0.2, screenCenterX, screenCenterY, canvas.width * 0.7);
+            gradient.addColorStop(0, skyColors.top);
+            gradient.addColorStop(1, skyColors.bottom);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.restore(); // Restore camera transform
+            
+            if (islandShape.length < 2) return;
+            
+            ctx.beginPath();
+            ctx.moveTo(islandShape[0].x, islandShape[0].y);
+            for(let i = 1; i < islandShape.length; i++) {
+                ctx.lineTo(islandShape[i].x, islandShape[i].y);
+            }
+            ctx.closePath();
+
+            ctx.lineWidth = 30;
+            ctx.strokeStyle = '#FDE68A';
+            ctx.stroke();
+            
+            ctx.fillStyle = '#22C55E';
+            ctx.fill();
+
+            const padRadius = AIRPORT_LAYOUT_RADIUS + 30;
+            ctx.fillStyle = '#9CA3AF';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, padRadius, 0, 2 * Math.PI);
+            ctx.fill();
+
+            trees.forEach(tree => {
+                ctx.beginPath();
+                ctx.arc(tree.x, tree.y, tree.radius, 0, 2 * Math.PI);
+                ctx.fillStyle = tree.color;
+                ctx.fill();
+            });
+        }
+
+        function drawAirport(airport) {
+            ctx.save();
+            ctx.translate(airport.x, airport.y);
+            ctx.rotate(airport.angle);
+            
+            ctx.fillStyle = '#4B5563';
+            ctx.fillRect(-airport.width / 2, -airport.height / 2, airport.width, airport.height);
+            
+            if (settings.visualEffects && airport.approachFlash > 0) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${airport.approachFlash * 0.5})`;
+                ctx.fillRect(-airport.width / 2, -airport.height / 2, airport.width, airport.height);
+                airport.approachFlash -= 0.02;
+            }
+
+            ctx.strokeStyle = '#F9FAFB';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([15, 10]);
+            ctx.beginPath();
+            ctx.moveTo(-airport.width / 2 + 20, 0);
+            ctx.lineTo(airport.width / 2 - 20, 0);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.font = 'bold 18px Inter';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(String(airport.runwayNumber).padStart(2, '0'), airport.width / 2 - 15, 0);
+
+            ctx.fillStyle = COLORS[airport.color].main;
+            ctx.fillRect(-airport.width/2, -airport.height/2, 10, airport.height);
+            ctx.fillRect(airport.width/2 - 10, -airport.height/2, 10, airport.height);
+
+            if (settings.realisticLanding) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.fillRect(-airport.width / 2, -airport.height / 2, 30, airport.height);
+                ctx.fillRect(airport.width / 2 - 30, -airport.height / 2, 30, airport.height);
+            }
+
+            if (airport.isClosed) {
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 8;
+                ctx.beginPath();
+                ctx.moveTo(-airport.width/2.5, -airport.height/2.5);
+                ctx.lineTo(airport.width/2.5, airport.height/2.5);
+                ctx.moveTo(airport.width/2.5, -airport.height/2.5);
+                ctx.lineTo(-airport.width/2.5, airport.height/2.5);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+        
+        function drawPlaneTrail(plane) {
+            if (!settings.visualEffects || plane.trail.length < 2) return;
+            ctx.beginPath();
+            ctx.moveTo(plane.trail[0].x, plane.trail[0].y);
+            for (let i = 1; i < plane.trail.length; i++) {
+                const p = plane.trail[i];
+                ctx.lineTo(p.x, p.y);
+            }
+            ctx.strokeStyle = `rgba(255, 255, 255, 0.2)`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function drawPlane(plane) {
+            ctx.save();
+            ctx.globalAlpha = plane.opacity;
+            ctx.translate(plane.x, plane.y);
+            let rotation = plane.angle;
+            if (!plane.landed) {
+                let wobble = Math.sin(gameTimer / 200) * 0.05;
+                let crosswindOffset = 0;
+                if (settings.wind && settings.realisticLanding && plane.path.length > 0) {
+                    const movementAngle = Math.atan2(plane.path[0].y - plane.y, plane.path[0].x - plane.x);
+                    const windEffect = Math.sin(movementAngle - wind.angle) * (wind.speed * 2);
+                    crosswindOffset = windEffect * 0.5;
+                }
+                rotation += wobble + crosswindOffset;
+            }
+            ctx.rotate(rotation);
+
+            let scale = 1;
+            if (plane.size === 'small') scale = 0.8;
+            if (plane.size === 'large') scale = 1.2;
+            ctx.scale(scale, scale);
+            
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.beginPath();
+            const w_shadow = PLANE_SIZE;
+            ctx.moveTo(w_shadow / 2 + 5, 5);
+            ctx.lineTo(-w_shadow / 2 + 5, -w_shadow / 2 + 5);
+            ctx.lineTo(-w_shadow / 3 + 5, 5);
+            ctx.lineTo(-w_shadow / 2 + 5, w_shadow / 2 + 5);
+            ctx.closePath();
+            ctx.fill();
+
+            if (settings.fuelSystem) {
+                const gaugeWidth = PLANE_SIZE * 0.8;
+                const gaugeHeight = 5;
+                const gaugeY = -PLANE_SIZE / 2 - 10;
+                
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(-gaugeWidth / 2, gaugeY, gaugeWidth, gaugeHeight);
+                
+                const fuelPercent = plane.fuel / plane.maxFuel;
+                let fuelColor = '#10B981';
+                if (fuelPercent < 0.5) fuelColor = '#F59E0B';
+                if (fuelPercent < 0.25) fuelColor = '#EF4444';
+                
+                if (fuelPercent < 0.25 && Math.floor(gameTimer / 250) % 2 === 0) {} 
+                else {
+                    ctx.fillStyle = fuelColor;
+                    ctx.fillRect(-gaugeWidth / 2, gaugeY, gaugeWidth * fuelPercent, gaugeHeight);
+                }
+            }
+
+            const colorSet = COLORS[plane.color];
+            ctx.fillStyle = plane.crashed ? '#4A5568' : colorSet.main;
+            ctx.strokeStyle = plane.isSelected ? '#FFD700' : '#1F2937';
+            ctx.lineWidth = plane.isSelected ? 3 : 2;
+
+            const w = PLANE_SIZE;
+            
+            if (plane.type === 'cargo') {
+                ctx.beginPath();
+                ctx.moveTo(w / 2, -w / 4); ctx.lineTo(w / 2, w / 4); ctx.lineTo(-w / 2, w / 2); ctx.lineTo(-w / 2, -w / 2); ctx.closePath();
+            } else if (plane.type === 'vip') {
+                ctx.beginPath();
+                ctx.moveTo(w / 2, 0);
+                ctx.lineTo(-w / 4, -w / 6);
+                ctx.lineTo(-w / 2, -w / 2);
+                ctx.lineTo(-w / 2, w / 2);
+                ctx.lineTo(-w / 4, w / 6);
+                ctx.closePath();
+            } else if (plane.type === 'emergency') {
+                ctx.beginPath();
+                ctx.moveTo(w / 2, 0);
+                ctx.lineTo(-w/3, -w/3);
+                ctx.lineTo(-w/3, w/3);
+                ctx.closePath();
+            }
+            else {
+                ctx.beginPath();
+                ctx.moveTo(w / 2, 0); ctx.lineTo(-w / 2, -w / 2); ctx.lineTo(-w / 3, 0); ctx.lineTo(-w / 2, w / 2); ctx.closePath();
+            }
+            ctx.fill();
+            ctx.stroke();
+
+            if(plane.type === 'emergency' && Math.floor(gameTimer / 250) % 2 === 0) {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(-w/6, -3, w/3, 6);
+                ctx.fillRect(-2, -w/6, 4, w/3);
+            }
+
+            ctx.restore();
+        }
+        
+        function drawPath(plane) {
+            if (plane && plane.path.length > 1) {
+                const pathColor = COLORS[plane.color].dark;
+                ctx.beginPath();
+                ctx.moveTo(plane.x, plane.y);
+                plane.path.forEach(point => ctx.lineTo(point.x, point.y));
+                ctx.strokeStyle = pathColor;
+                ctx.lineWidth = 2;
+                ctx.setLineDash([2, 7]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+        
+        function drawSelectionPath() {
+             if (selectedPlane && path.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(selectedPlane.x, selectedPlane.y);
+                path.forEach(point => ctx.lineTo(point.x, point.y));
+                ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([2, 7]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+        
+        function drawScorePopups() {
+            scorePopups.forEach((popup, index) => {
+                ctx.save();
+                popup.scale += 0.01;
+                ctx.font = `bold ${20 * popup.scale}px Inter`;
+                ctx.fillStyle = `rgba(34, 139, 34, ${popup.opacity})`;
+                ctx.fillText(`+$${popup.score}`, popup.x, popup.y);
+                ctx.restore();
+
+                popup.y -= 0.8;
+                popup.opacity -= 0.02;
+                if (popup.opacity <= 0) {
+                    scorePopups.splice(index, 1);
+                }
+            });
+        }
+
+        function drawNotifications() {
+            notifications.forEach((notification, index) => {
+                ctx.save();
+                ctx.font = `bold 14px Inter`;
+                ctx.textAlign = 'center';
+                ctx.strokeStyle = `rgba(0, 0, 0, ${notification.opacity * 0.8})`;
+                ctx.lineWidth = 3;
+                ctx.strokeText(notification.text, notification.x, notification.y);
+                
+                ctx.fillStyle = notification.color || `rgba(255, 255, 255, ${notification.opacity})`;
+                ctx.fillText(notification.text, notification.x, notification.y);
+                ctx.restore();
+
+                notification.y -= 0.5;
+                notification.opacity -= 0.015;
+                if (notification.opacity <= 0) {
+                    notifications.splice(index, 1);
+                }
+            });
+        }
+        
+        function drawLevelAnnouncement() {
+            if (levelAnnouncement.opacity > 0) {
+                ctx.save();
+                ctx.globalAlpha = levelAnnouncement.opacity;
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+                ctx.font = `bold ${80 * levelAnnouncement.scale}px Inter`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const x = 0; // Centered by camera transform
+                const y = 0;
+                ctx.strokeText(levelAnnouncement.text, x, y);
+                ctx.fillText(levelAnnouncement.text, x, y);
+                ctx.restore();
+            }
+        }
+        
+        function drawWind() {
+            if (!settings.wind || wind.speed === 0) return;
+
+            windParticles.forEach(p => {
+                p.x += wind.speed * Math.cos(wind.angle) * 1.5;
+                p.y += wind.speed * Math.sin(wind.angle) * 1.5;
+                
+                if (p.x < -WORLD_BOUNDARY) p.x = WORLD_BOUNDARY;
+                if (p.x > WORLD_BOUNDARY) p.x = -WORLD_BOUNDARY;
+                if (p.y < -WORLD_BOUNDARY) p.y = WORLD_BOUNDARY;
+                if (p.y > WORLD_BOUNDARY) p.y = -WORLD_BOUNDARY;
+
+                ctx.strokeStyle = `rgba(255, 255, 255, ${p.opacity})`;
+                ctx.lineWidth = p.radius;
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p.x - Math.cos(wind.angle) * 5, p.y - Math.sin(wind.angle) * 5);
+                ctx.stroke();
+            });
+        }
+        
+        function drawAestheticClouds() {
+            if (!settings.clouds) return;
+            aestheticClouds.forEach(cloud => {
+                cloud.x += cloud.speed;
+                if (cloud.x > WORLD_BOUNDARY + cloud.radius * 4) {
+                    cloud.x = -WORLD_BOUNDARY - cloud.radius * 4;
+                }
+                
+                ctx.beginPath();
+                ctx.fillStyle = `rgba(255, 255, 255, ${cloud.opacity})`;
+                for(const part of cloud.parts) {
+                    ctx.moveTo(cloud.x + part.x, cloud.y + part.y);
+                    ctx.arc(cloud.x + part.x, cloud.y + part.y, part.radius, 0, Math.PI * 2);
+                }
+                ctx.fill();
+            });
+        }
+        
+        function drawStorms() {
+            if (!settings.stormsToggle) return;
+            stormClouds.forEach(cloud => {
+                cloud.x += cloud.speed;
+                if (cloud.x > WORLD_BOUNDARY + cloud.radius * 4) {
+                    cloud.x = -WORLD_BOUNDARY - cloud.radius * 4;
+                }
+                
+                ctx.beginPath();
+                ctx.fillStyle = `rgba(100, 100, 120, ${cloud.opacity})`;
+                for(const part of cloud.parts) {
+                    ctx.moveTo(cloud.x + part.x, cloud.y + part.y);
+                    ctx.arc(cloud.x + part.x, cloud.y + part.y, part.radius, 0, Math.PI * 2);
+                }
+                ctx.fill();
+
+                // Draw rain
+                ctx.strokeStyle = 'rgba(174,194,224,0.7)';
+                ctx.lineWidth = 1;
+                ctx.lineCap = 'round';
+                cloud.rain.forEach(drop => {
+                    ctx.beginPath();
+                    ctx.moveTo(drop.x, drop.y);
+                    ctx.lineTo(drop.x, drop.y + drop.l);
+                    ctx.stroke();
+                });
+            });
+        }
+        
+        function drawEffects() {
+            effects.forEach((effect, index) => {
+                if (effect.type === 'groundFire') {
+                    effect.life--;
+                    if (effect.life <= 0 && effect.particles.length === 0) {
+                        effects.splice(index, 1);
+                        return;
+                    }
+                    // Spawn new particles if effect is active
+                    if (effect.life > 0 && Math.random() < 0.7) {
+                        effect.particles.push({
+                            x: effect.x + (Math.random() - 0.5) * 15,
+                            y: effect.y,
+                            vx: (Math.random() - 0.5) * 0.3,
+                            vy: -0.5 - Math.random() * 0.5,
+                            radius: Math.random() * 5 + 1,
+                            opacity: 1,
+                            maxLife: 50 + Math.random() * 50,
+                            life: 50 + Math.random() * 50,
+                            color: ['55, 65, 81', '249, 115, 22'][Math.floor(Math.random() * 1.3)] // Smoke and a bit of fire
+                        });
+                    }
+
+                    // Update and draw particles for this effect
+                    effect.particles.forEach((p, pIndex) => {
+                        p.life--;
+                        if (p.life <= 0) {
+                            effect.particles.splice(pIndex, 1);
+                            return;
+                        }
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.opacity = p.life / p.maxLife;
+
+                        ctx.fillStyle = `rgba(${p.color}, ${p.opacity * 0.7})`;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                } else if (effect.type === 'poof' || effect.type === 'crash' || effect.type === 'smoke') {
+                    effect.particles.forEach((p, pIndex) => {
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.opacity -= 0.02;
+                         if (p.opacity <= 0) {
+                            effect.particles.splice(pIndex, 1);
+                            return;
+                        }
+                        ctx.fillStyle = `rgba(${p.color}, ${p.opacity})`;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    if (effect.particles.length === 0) {
+                        effects.splice(index, 1);
+                    }
+                }
+            });
+        }
+        
+        function drawCoins() {
+            coins.forEach(coin => {
+                ctx.save();
+                ctx.translate(coin.x, coin.y);
+                ctx.fillStyle = '#FBBF24';
+                ctx.strokeStyle = '#B45309';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, COIN_RADIUS, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#B45309';
+                ctx.font = 'bold 14px Inter';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('$', 0, 1);
+                ctx.restore();
+            });
+        }
+
+        function drawWaterRipples() {
+            if (!settings.visualEffects) return;
+            waterRipples.forEach((ripple, index) => {
+                ripple.radius += 0.5;
+                ripple.opacity -= 0.01;
+                if (ripple.opacity <= 0) {
+                    waterRipples.splice(index, 1);
+                    return;
+                }
+                ctx.strokeStyle = `rgba(255, 255, 255, ${ripple.opacity * 0.5})`;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+        }
+
+        function drawNightOverlay() {
+            let time = dayNightCycle.time / dayNightCycle.duration;
+            let opacity = 0;
+            if (time > 0.5 && time < 1) {
+                opacity = Math.sin((time - 0.5) * 2 * Math.PI) * 0.4;
+            }
+            if (opacity > 0) {
+                ctx.fillStyle = `rgba(0, 0, 30, ${opacity})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+        
+        function drawHoldingPattern() {
+            if (settings.holdingPattern <= 0) return;
+
+            const centerX = 0;
+            const centerY = 0;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, HOLDING_PATTERN_RADIUS, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 12]);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // --- Core Game Loop ---
+        function update(timestamp) {
+            if (!gameRunning) return;
+            
+            if (isPaused) {
+                lastFrameTime = timestamp;
+                return;
+            }
+            
+            if (!lastFrameTime) {
+                lastFrameTime = timestamp;
+                return;
+            }
+            const deltaTime = timestamp - lastFrameTime;
+            lastFrameTime = timestamp;
+
+            // Normal top-down update logic
+            if (levelAnnouncement.opacity > 0) {
+                levelAnnouncement.opacity -= 0.008;
+                if (levelAnnouncement.scale > 1) {
+                    levelAnnouncement.scale -= 0.005;
+                }
+            }
+
+            gameTimer += deltaTime;
+            timeSinceLastGoAround += deltaTime;
+            updateTimerDisplay();
+            if (settings.dayNightCycleToggle) {
+                updateDayNightCycle(deltaTime);
+                updateDayNightIndicator();
+            }
+            if (settings.stormsToggle) {
+                updateStorms(deltaTime);
+            }
+            updateAestheticClouds(deltaTime);
+            updateRunwayClosures(deltaTime);
+            
+            timeSinceLastBonus += deltaTime;
+            if (timeSinceLastBonus >= 5000) {
+                score += level;
+                updateWalletDisplay();
+                timeSinceLastBonus = 0;
+            }
+
+            timeSinceLastSpawn += deltaTime;
+            const spawnInterval = 4500 - (settings.spawnRate / 100) * 4000;
+            
+            if (timeSinceLastSpawn > spawnInterval) {
+                let spawnedThisCycle = false;
+                while (planes.length < simultaneousPlanes) {
+                    if (!spawnNewPlane()) {
+                        // Stop trying if a plane fails to spawn (e.g., no runways available)
+                        break;
+                    }
+                    spawnedThisCycle = true;
+                }
+                if(spawnedThisCycle) {
+                    timeSinceLastSpawn = 0;
+                }
+            }
+
+
+            planes.forEach((plane, index) => {
+                if (plane.landed) {
+                    plane.opacity -= 0.02;
+                    if (plane.opacity <= 0) {
+                        planes.splice(index, 1);
+                    }
+                    return;
+                }
+                
+                if (plane.crashed) {
+                    plane.opacity -= 0.02;
+                    if (plane.opacity <= 0) {
+                        planes.splice(index, 1);
+                    }
+                    return;
+                }
+
+                if (plane.isCrashing) {
+                    plane.crashOrbitAngle += 0.2;
+                    plane.crashOrbitRadius -= 0.3;
+                    plane.x = plane.crashOrbitCenter.x + Math.cos(plane.crashOrbitAngle) * plane.crashOrbitRadius;
+                    plane.y = plane.crashOrbitCenter.y + Math.sin(plane.crashOrbitAngle) * plane.crashOrbitRadius;
+                    plane.angle += 0.2; // Visual spin
+
+                    if (settings.visualEffects && Math.random() < 0.5) {
+                        createEffect('smoke', plane.x, plane.y);
+                    }
+
+                    if (plane.crashOrbitRadius <= 1) {
+                        if (!plane.crashed) {
+                            triggerCrash(plane);
+                            if (gameRunning) {
+                                gameRunning = false;
+                                setTimeout(() => endGame("A mid-air collision occurred!"), 2000);
+                            }
+                        }
+                    }
+                    return; // Skip all other logic for this plane
+                }
+                
+                if (settings.visualEffects) {
+                    plane.trail.push({ x: plane.x, y: plane.y });
+                    if (plane.trail.length > 20) {
+                        plane.trail.shift();
+                    }
+                    if (!isPointInPolygon({x: plane.x, y: plane.y}, islandShape)) {
+                        if (Math.random() < 0.1) {
+                            waterRipples.push({x: plane.x, y: plane.y, radius: 5, opacity: 1});
+                        }
+                    }
+                    if (plane.type === 'emergency' && Math.random() < 0.3) {
+                        createEffect('smoke', plane.x, plane.y);
+                    }
+                }
+
+                if (plane.collisionImmunityTimer > 0) {
+                    plane.collisionImmunityTimer -= deltaTime;
+                }
+
+                if (settings.fuelSystem) {
+                    plane.fuel -= 0.05;
+                    if (plane.fuel <= 0) {
+                        triggerCrash(plane, true);
+                        let message = "A plane ran out of fuel!";
+                        if (plane.type === 'emergency') message = "An emergency plane ran out of fuel! Mission failed.";
+                        if(gameRunning) {
+                            gameRunning = false;
+                            setTimeout(() => endGame(message), 2000);
+                        }
+                    }
+                }
+                
+                if (settings.wind) {
+                    let windSpeed = wind.speed;
+                    plane.x += windSpeed * Math.cos(wind.angle);
+                    plane.y += windSpeed * Math.sin(wind.angle);
+                }
+
+                stormClouds.forEach(cloud => {
+                    if (distance(plane, cloud) < cloud.radius) {
+                        plane.x += cloud.wind.speed * Math.cos(cloud.wind.angle);
+                        plane.y += cloud.wind.speed * Math.sin(cloud.wind.angle);
+                    }
+                });
+
+                if (plane.path.length > 0) {
+                    if(plane.isOrbiting) {
+                        plane.isOrbiting = false;
+                    }
+                    const target = plane.path[0];
+                    const angle = Math.atan2(target.y - plane.y, target.x - plane.x);
+                    plane.angle = angle;
+                    plane.x += Math.cos(angle) * plane.speed * 1.5;
+                    plane.y += Math.sin(angle) * plane.speed * 1.5;
+
+                    if (distance(plane, target) < 15) {
+                        plane.path.shift();
+                        if (plane.path.length === 0 && plane.isLanding) {
+                            const airport = plane.targetAirport;
+                            let isProperLanding = true;
+
+                            if (settings.realisticLanding && airport) {
+                                const angleDiff = Math.abs(diffAngle(plane.angle, airport.angle));
+                                const tolerance = Math.PI / 4; // 45 degrees
+                                if (angleDiff > tolerance && angleDiff < (Math.PI - tolerance)) {
+                                    isProperLanding = false;
+                                }
+                            }
+
+                            if (!isProperLanding) {
+                                triggerCrash(plane, true); // Ground crash
+                                if (gameRunning) {
+                                    gameRunning = false;
+                                    setTimeout(() => endGame("Improper landing approach!"), 2000);
+                                }
+                                return;
+                            } else {
+                                plane.landed = true;
+                                plane.angle = plane.finalAngle;
+                                createEffect('poof', plane.x, plane.y);
+                                playSound('landing', null, null, 0.1);
+                                
+                                let landingScore = 0;
+                                if (settings.fuelSystem) {
+                                    landingScore = Math.floor((plane.fuel / plane.maxFuel) * MAX_SCORE);
+                                } else {
+                                    const landingTime = Date.now() - plane.spawnTime;
+                                    const timeRatio = Math.max(0, (MAX_LANDING_TIME - landingTime) / (MAX_LANDING_TIME - MIN_LANDING_TIME));
+                                    landingScore = Math.floor(MIN_SCORE + (MAX_SCORE - MIN_SCORE) * Math.min(1, timeRatio));
+                                }
+                                
+                                if(plane.type === 'vip') landingScore *= 1.5;
+                                if(plane.type === 'cargo') landingScore *= 1.2;
+                                if(plane.type === 'emergency') landingScore *= 2.0;
+
+                                const difficultyMultiplier = calculateDifficultyMultiplier();
+                                landingScore = Math.floor(landingScore * difficultyMultiplier);
+
+                                scorePopups.push({ x: plane.x, y: plane.y, score: landingScore, opacity: 1, scale: 1 });
+                                score += landingScore;
+                                planesLanded++;
+                                updateWalletDisplay();
+                                checkLevelEnd();
+                            }
+                        }
+                    }
+                } else { 
+                    if (plane.isOrbiting) {
+                        const centerX = 0;
+                        const centerY = 0;
+                        plane.orbitAngle += (plane.speed / plane.orbitRadius) * plane.orbitDirection;
+                        const targetX = centerX + Math.cos(plane.orbitAngle) * plane.orbitRadius;
+                        const targetY = centerY + Math.sin(plane.orbitAngle) * plane.orbitRadius;
+                        plane.angle = Math.atan2(targetY - plane.y, targetX - plane.x);
+                        plane.x = targetX;
+                        plane.y = targetY;
+                    } else {
+                        // Default movement for planes without a path
+                        const centerX = 0;
+                        const centerY = 0;
+                        const distToCenter = distance(plane, {x: centerX, y: centerY});
+
+                        if (settings.holdingPattern > 0 && !plane.isGoAround && plane.type !== 'emergency') {
+                            const holdingLimit = settings.holdingPattern == 5 ? Infinity : parseInt(settings.holdingPattern);
+                            const sameColorOrbitingPlanes = planes.filter(p => p.isOrbiting && p.color === plane.color);
+
+                            if (sameColorOrbitingPlanes.length < holdingLimit && distToCenter < HOLDING_PATTERN_RADIUS) {
+                                plane.isOrbiting = true;
+                                plane.orbitRadius = distToCenter;
+                                plane.orbitAngle = Math.atan2(plane.y - centerY, plane.x - centerX);
+                                plane.orbitDirection = holdingPatternDirection;
+                                createNotification("Entered holding pattern", plane.x, plane.y - 30);
+                            }
+                        }
+                        
+                        plane.x += Math.cos(plane.angle) * plane.speed;
+                        plane.y += Math.sin(plane.angle) * plane.speed;
+                    }
+                }
+
+                const isOnScreen = plane.x > -WORLD_BOUNDARY && plane.x < WORLD_BOUNDARY && plane.y > -WORLD_BOUNDARY && plane.y < WORLD_BOUNDARY;
+                if (isOnScreen) {
+                    plane.hasBeenOnScreen = true;
+                }
+
+                const isFarOutOfBounds = plane.x < -WORLD_BOUNDARY - 100 || plane.x > WORLD_BOUNDARY + 100 || plane.y < -WORLD_BOUNDARY - 100 || plane.y > WORLD_BOUNDARY + 100;
+                if (isFarOutOfBounds && plane.hasBeenOnScreen) {
+                    if (plane.isGoAround) {
+                        setTimeout(() => {
+                            const newPlane = createPlane(plane.type, plane.color);
+                            if (newPlane) planes.push(newPlane);
+                        }, 2000);
+                        planes.splice(index, 1);
+                        return;
+                    } 
+                    
+                    if (plane.type === 'emergency') {
+                        if (!plane.crashed && !plane.isCrashing) {
+                            plane.isCrashing = true;
+                            plane.path = [];
+                            plane.x = Math.max(0, Math.min(plane.x, canvas.width));
+                            plane.y = Math.max(0, Math.min(plane.y, canvas.height));
+                            plane.crashOrbitCenter = { x: plane.x, y: plane.y };
+                            plane.crashOrbitRadius = 50;
+                            plane.crashOrbitAngle = Math.atan2(plane.y - canvas.height/2, plane.x - canvas.width/2);
+                        }
+                        return; 
+                    } 
+                    
+                    spawnNewPlane();
+                    planes.splice(index, 1);
+                    return;
+                }
+
+
+                coins.forEach((coin, coinIndex) => {
+                    if (distance(plane, coin) < PLANE_SIZE / 2 + COIN_RADIUS) {
+                        playSound('coin', 'C5', '16n');
+                        score += COIN_VALUE;
+                        updateWalletDisplay();
+                        scorePopups.push({ x: coin.x, y: coin.y, score: COIN_VALUE, opacity: 1, scale: 1 });
+                        coins.splice(coinIndex, 1);
+                    }
+                });
+            });
+
+            for (let i = 0; i < planes.length; i++) {
+                for (let j = i + 1; j < planes.length; j++) {
+                    const plane1 = planes[i];
+                    const plane2 = planes[j];
+
+                    if (plane1.landed || plane2.landed || plane1.crashed || plane2.crashed || plane1.isGoAround || plane2.isGoAround || plane1.isCrashing || plane2.isCrashing || plane1.collisionImmunityTimer > 0 || plane2.collisionImmunityTimer > 0) {
+                        continue;
+                    }
+                    
+                    if (!settings.sameColorCollision) {
+                        if (plane1.color === plane2.color) {
+                            continue;
+                        }
+                    }
+
+                    const dist = distance(plane1, plane2);
+
+                    if (settings.goArounds && dist < GO_AROUND_RADIUS && timeSinceLastGoAround >= 60000) {
+                        const planeToReroute = plane1.spawnTime > plane2.spawnTime ? plane1 : plane2;
+                        if (!planeToReroute.isGoAround) {
+                            planeToReroute.isGoAround = true;
+                            planeToReroute.path = [getRandomPositionOutsideCanvas()];
+                            planeToReroute.isLanding = false;
+                            score += GO_AROUND_PENALTY;
+                            updateWalletDisplay();
+                            createNotification("GO AROUND!", planeToReroute.x, planeToReroute.y - 30, 'rgba(239, 68, 68, 0.9)');
+                            timeSinceLastGoAround = 0;
+                        }
+                    } else if (dist < COLLISION_RADIUS) {
+                        if (!plane1.isCrashing && !plane2.isCrashing) {
+                            plane1.isCrashing = true;
+                            plane1.path = [];
+                            plane1.crashOrbitCenter = { x: (plane1.x + plane2.x) / 2, y: (plane1.y + plane2.y) / 2 };
+                            plane1.crashOrbitRadius = 30;
+                            plane1.crashOrbitAngle = Math.atan2(plane1.y - plane1.crashOrbitCenter.y, plane1.x - plane1.crashOrbitCenter.x);
+
+                            plane2.isCrashing = true;
+                            plane2.path = [];
+                            plane2.crashOrbitCenter = { x: (plane1.x + plane2.x) / 2, y: (plane1.y + plane2.y) / 2 };
+                            plane2.crashOrbitRadius = 30;
+                            plane2.crashOrbitAngle = Math.atan2(plane2.y - plane2.crashOrbitCenter.y, plane2.x - plane2.crashOrbitCenter.x);
+                        }
+                    }
+                }
+            }
+        }
+        
+        function gameLoop(timestamp) {
+            animationFrameId = requestAnimationFrame(gameLoop);
+            update(timestamp);
+            draw();
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // --- Apply Camera Transform ---
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.scale(camera.zoom, camera.zoom);
+            ctx.translate(-camera.x, -camera.y);
+
+            // --- Draw World-Space Elements ---
+            drawBackground();
+            drawWaterRipples();
+            drawWind();
+            drawHoldingPattern();
+            airports.forEach(drawAirport);
+            drawCoins();
+            
+            planes.forEach(drawPlaneTrail);
+            
+            drawEffects(); // Draw lingering effects behind planes
+            
+            planes.forEach(drawPlane);
+            
+            planes.forEach(plane => { drawPath(plane); });
+            drawSelectionPath();
+
+            drawAestheticClouds();
+            if (settings.stormsToggle) {
+                drawStorms();
+            }
+            if (settings.dayNightCycleToggle) {
+                drawNightOverlay();
+            }
+            drawScorePopups();
+            drawNotifications();
+            drawLevelAnnouncement();
+            
+            // --- Restore Transform ---
+            ctx.restore();
+        }
+        
+        // --- Game Flow & State Management ---
+        function triggerCrash(plane, onGround = false) {
+            if (plane.crashed) return;
+            plane.crashed = true;
+            createEffect('crash', plane.x, plane.y);
+            if(onGround) {
+                createEffect('groundFire', plane.x, plane.y);
+            }
+            playSound('crash', 'C2', '8n', 0.1);
+        }
+
+        function createEffect(type, x, y) {
+            if (!settings.visualEffects) return;
+            let particleCount, colors;
+            if (type === 'smoke') {
+                particleCount = 5;
+                colors = ['100, 116, 139', '249, 115, 22'];
+            } else if (type === 'crash') {
+                particleCount = 40;
+                colors = ['249, 115, 22', '239, 68, 68', '252, 211, 77', '100, 116, 139'];
+            } else if (type === 'groundFire') {
+                effects.push({ type: 'groundFire', x: x, y: y, life: 200, particles: [] });
+                return; // This effect type manages its own particles
+            } else { // Poof
+                particleCount = 20;
+                colors = ['255, 255, 255'];
+            }
+
+            const particles = [];
+            for (let i = 0; i < particleCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * (type === 'crash' ? 4 : 2) + 1;
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: Math.random() * 3 + 1,
+                    opacity: 1,
+                    life: 40 + Math.random() * 30,
+                    maxLife: 70,
+                    color: colors[Math.floor(Math.random() * colors.length)]
+                });
+            }
+            effects.push({ type, particles });
+        }
+
+        function createNotification(text, x, y, color = 'rgba(255, 255, 255, 0.9)') {
+            notifications.push({ text, x, y, opacity: 1, color });
+        }
+
+
+        function checkLevelEnd() {
+            updatePlanesLeft();
+            const totalPlanesForLevel = getPlanesToLandForLevel(level);
+            if (planesLanded >= totalPlanesForLevel) {
+                setTimeout(levelUp, 1000);
+            }
+        }
+        
+        function levelUp() {
+            isPaused = true;
+            playSound('uiConfirm', 'C4', '4n');
+            if (level + 1 > highestLevel) {
+                highestLevel = level + 1;
+                saveGameState(highestLevel);
+            }
+            nextLevelEl.textContent = level + 1;
+            levelCompleteModal.classList.remove('hidden');
+        }
+
+        function startNextLevel() {
+            playSound('uiClick', 'C4');
+            levelCompleteModal.classList.add('hidden');
+            level++;
+            planes = [];
+            levelEl.textContent = level;
+            planesLanded = 0;
+            planesSpawnedThisLevel = 0;
+            
+            levelAnnouncement = { text: `Level ${level}`, opacity: 1, scale: 1.5 };
+
+            generateIslandShape();
+            initializeAirports();
+            updatePlanesLeft();
+            updateTipBanner();
+            updateWind();
+            initializeAestheticClouds();
+            initializeStorms();
+            initializeCoins();
+            holdingPatternDirection = (Math.random() < 0.5) ? 1 : -1;
+
+            isPaused = false;
+        }
+
+        function endGame(message) {
+            if (!gameRunning) return; // Prevent multiple calls
+            gameRunning = false;
+            gameOverMessage.textContent = message;
+            finalBalanceEl.textContent = `$${score}`;
+            gameOverModal.classList.remove('hidden');
+        }
+        
+        function resetGame(startLevel = 1, preserveWallet = false) {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+
+            resizeCanvas();
+            
+            if (!preserveWallet) {
+                score = 0;
+                simultaneousPlanes = 1;
+            }
+            
+            if (settings.godMode) {
+                score = 1000000;
+            }
+
+            planes = [];
+            effects = [];
+            waterRipples = [];
+            notifications = [];
+            stormClouds = [];
+            aestheticClouds = [];
+            level = startLevel;
+            planesLanded = 0;
+            planesSpawnedThisLevel = 0;
+            scorePopups = [];
+            isPaused = false;
+            selectedPlane = null;
+            path = [];
+            gameTimer = 0;
+            timeSinceLastBonus = 0;
+            lastFrameTime = undefined;
+            dayNightCycle.time = 0;
+            runwayClosure.airportId = null;
+            runwayClosure.timer = 0;
+            runwayClosureHasHappenedThisLevel = false;
+            if (level >= 3 && settings.runwayClosures) {
+                const totalPlanes = getPlanesToLandForLevel(level);
+                runwayClosureTriggerCount = Math.floor(Math.random() * (totalPlanes - 2)) + 1;
+            } else {
+                runwayClosureTriggerCount = -1;
+            }
+            holdingPatternDirection = (Math.random() < 0.5) ? 1 : -1;
+            timeSinceLastGoAround = 60000;
+            
+            updateWalletDisplay();
+            levelEl.textContent = level;
+            
+            levelAnnouncement = { text: `Level ${level}`, opacity: 1, scale: 1.5 };
+
+            generateIslandShape();
+            initializeAirports();
+
+            updatePlanesLeft();
+            updateTipBanner();
+            updateScoreMultiplierLabel();
+            updateWind();
+            initializeAestheticClouds();
+            initializeStorms();
+            initializeCoins();
+            updateActiveFeaturesDisplay();
+            updateDayNightIndicator();
+            
+            gameOverModal.classList.add('hidden');
+            levelCompleteModal.classList.add('hidden');
+            levelSelectModal.classList.add('hidden');
+            settingsModal.classList.add('hidden');
+            inGameUI.classList.remove('hidden');
+            
+            gameRunning = true;
+            gameLoop();
+        }
+
+        function spawnNewPlane(forceType = null, forceColor = null) {
+            const newPlane = createPlane(forceType, forceColor);
+            if (newPlane) {
+                planes.push(newPlane);
+                planesSpawnedThisLevel++;
+                if (settings.runwayClosures && !runwayClosureHasHappenedThisLevel && planesSpawnedThisLevel === runwayClosureTriggerCount) {
+                    triggerRunwayClosure();
+                }
+                return true;
+            }
+            return false;
+        }
+
+        function updateDayNightCycle(deltaTime) {
+            dayNightCycle.time = (dayNightCycle.time + deltaTime) % dayNightCycle.duration;
+        }
+
+        function lerpColor(color1, color2, factor) {
+            let result = color1.slice();
+            for (let i = 0; i < 3; i++) {
+                result[i] = Math.round(result[i] + factor * (color2[i] - result[i]));
+            }
+            return `rgb(${result.join(',')})`;
+        }
+
+        function getSkyColors() {
+            if (!settings.dayNightCycleToggle) return { top: '#60A5FA', bottom: '#3B82F6' };
+            const time = dayNightCycle.time / dayNightCycle.duration; // 0 to 1
+            const colors = {
+                dawn: { top: [247, 147, 26], bottom: [252, 70, 107] },
+                day: { top: [96, 165, 250], bottom: [59, 130, 246] },
+                dusk: { top: [252, 70, 107], bottom: [63, 94, 251] },
+                night: { top: [15, 23, 42], bottom: [30, 41, 59] }
+            };
+
+            if (time < 0.25) { // Dawn
+                return { top: lerpColor(colors.night.top, colors.dawn.top, time * 4), bottom: lerpColor(colors.night.bottom, colors.dawn.bottom, time * 4) };
+            } else if (time < 0.5) { // Day
+                return { top: lerpColor(colors.dawn.top, colors.day.top, (time - 0.25) * 4), bottom: lerpColor(colors.dawn.bottom, colors.day.bottom, (time - 0.25) * 4) };
+            } else if (time < 0.75) { // Dusk
+                return { top: lerpColor(colors.day.top, colors.dusk.top, (time - 0.5) * 4), bottom: lerpColor(colors.day.bottom, colors.dusk.bottom, (time - 0.5) * 4) };
+            } else { // Night
+                return { top: lerpColor(colors.dusk.top, colors.night.top, (time - 0.75) * 4), bottom: lerpColor(colors.dusk.bottom, colors.night.bottom, (time - 0.75) * 4) };
+            }
+        }
+
+        function createStormCloud() {
+            const radius = 80 + Math.random() * 40;
+            const cloud = {
+                x: -WORLD_BOUNDARY - radius,
+                y: Math.random() * WORLD_BOUNDARY * 2 - WORLD_BOUNDARY,
+                radius: radius,
+                speed: 0.5 + Math.random() * 0.5,
+                opacity: 0.6 + Math.random() * 0.2,
+                wind: { angle: (Math.random() - 0.5) * 0.5, speed: 0.2 + Math.random() * 0.3 },
+                parts: [],
+                rain: []
+            };
+
+            const numParts = 10 + Math.floor(Math.random() * 10);
+            for (let j = 0; j < numParts; j++) {
+                cloud.parts.push({ x: (Math.random() - 0.5) * cloud.radius * 1.8, y: (Math.random() - 0.5) * cloud.radius * 0.8, radius: cloud.radius * (0.3 + Math.random() * 0.6) });
+            }
+
+            const numRainDrops = 50;
+            for (let i = 0; i < numRainDrops; i++) {
+                cloud.rain.push({
+                    x: cloud.x + (Math.random() - 0.5) * cloud.radius * 2,
+                    y: cloud.y - cloud.radius/2 + (Math.random() * cloud.radius),
+                    l: Math.random() * 15,
+                    xs: -4 + Math.random() * 4 + 2,
+                    ys: Math.random() * 10 + 10
+                });
+            }
+            stormClouds.push(cloud);
+        }
+
+        function updateStorms(deltaTime) {
+            if (Math.random() < 0.001 && stormClouds.length < 3) {
+                createStormCloud();
+                playSound('thunder', null, '2n', 2);
+            }
+
+            stormClouds.forEach((cloud, index) => {
+                cloud.x += cloud.speed;
+                if (cloud.x - cloud.radius > WORLD_BOUNDARY) {
+                    stormClouds.splice(index, 1);
+                }
+
+                cloud.rain.forEach(p => {
+                    p.x += p.xs;
+                    p.y += p.ys;
+                    if (p.x > cloud.x + cloud.radius || p.y > cloud.y + cloud.radius/2) {
+                        p.x = cloud.x + (Math.random() - 0.5) * cloud.radius * 2;
+                        p.y = cloud.y - cloud.radius/2 + (Math.random() * cloud.radius);
+                    }
+                });
+            });
+        }
+        
+        function updateAestheticClouds(deltaTime) {
+             aestheticClouds.forEach(cloud => {
+                cloud.x += cloud.speed;
+                if (cloud.x > WORLD_BOUNDARY + cloud.radius * 4) {
+                    cloud.x = -WORLD_BOUNDARY - cloud.radius * 4;
+                }
+            });
+        }
+
+        function triggerRunwayClosure() {
+            const openRunways = airports.filter(a => !a.isClosed);
+            if (openRunways.length > 1) {
+                const runwayToClose = openRunways[Math.floor(Math.random() * openRunways.length)];
+                runwayToClose.isClosed = true;
+                runwayClosure.airportId = runwayToClose.id;
+                runwayClosure.timer = 30000;
+                updateTipBanner(`Runway ${runwayToClose.runwayNumber} is temporarily closed!`);
+                runwayClosureHasHappenedThisLevel = true;
+            }
+        }
+
+        function updateRunwayClosures(deltaTime) {
+            if (runwayClosure.timer > 0) {
+                runwayClosure.timer -= deltaTime;
+                if (runwayClosure.timer <= 0) {
+                    const airport = airports.find(a => a.id === runwayClosure.airportId);
+                    if (airport) {
+                        airport.isClosed = false;
+                        updateTipBanner(`Runway ${airport.runwayNumber} is open again!`);
+                    }
+                    runwayClosure.airportId = null;
+                }
+            }
+        }
+
+
+        // --- UI & Modal Functions ---
+        function getNextLevelCost() {
+            const cost = 400 * level * level + 600 * level;
+            return Math.round(cost / 50) * 50;
+        }
+
+        function updateWalletDisplay() {
+            if (walletEl) {
+                walletEl.textContent = `$${score}`;
+                walletDisplay.textContent = `$${score}`;
+            }
+            updatePurchaseButtons();
+        }
+
+        function getHangarUpgradeCost() {
+            return 200 + (simultaneousPlanes - 1) * 300;
+        }
+
+        function updatePurchaseButtons() {
+            const planeCost = getHangarUpgradeCost();
+            const nextLevelCost = getNextLevelCost();
+            purchasePlaneBtn.textContent = `Hangar Slot +1 ($${planeCost})`;
+            purchasePlaneBtn.disabled = score < planeCost;
+            purchaseRunwayBtn.textContent = `Next Level ($${nextLevelCost})`;
+            purchaseRunwayBtn.disabled = score < nextLevelCost;
+            hangarSlotsIndicator.textContent = simultaneousPlanes;
+        }
+
+        function updatePlanesLeft() {
+            const totalForLevel = getPlanesToLandForLevel(level);
+            const left = Math.max(0, totalForLevel - planesLanded);
+            planesLeftEl.textContent = left;
+        }
+        
+        function openLevelSelect() {
+            playSound('uiClick', 'C4');
+            isPaused = true;
+            levelGrid.innerHTML = '';
+            for (let i = 1; i <= highestLevel; i++) {
+                const button = document.createElement('button');
+                const runways = getNumRunwaysForLevel(i);
+                const planesToLand = getPlanesToLandForLevel(i);
+                button.className = "flex flex-col items-center justify-center p-2 border-2 border-gray-300 rounded-lg hover:bg-gray-200 transition";
+                button.innerHTML = `
+                    <span class="text-2xl font-bold">${i}</span>
+                    <div class="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                        <span>🛬 ${planesToLand}</span>
+                        <span>✈️ ${runways}</span>
+                    </div>
+                `;
+                button.onclick = () => {
+                    playSound('uiConfirm', 'E4');
+                    resetGame(i, true); // Preserve wallet when selecting a level
+                };
+                levelGrid.appendChild(button);
+            }
+            levelSelectModal.classList.remove('hidden');
+        }
+
+        function closeLevelSelect() {
+            playSound('uiClick', 'C4');
+            isPaused = false;
+            levelSelectModal.classList.add('hidden');
+        }
+
+        function openSettings(isInitial = false) {
+            if(!isInitial) playSound('uiClick', 'C4');
+            isPaused = true;
+            planeSpeedSlider.value = settings.speed;
+            spawnRateSlider.value = settings.spawnRate;
+            fuelToggle.checked = settings.fuelSystem;
+            windToggle.checked = settings.wind;
+            cloudsToggle.checked = settings.clouds;
+            holdingPatternSlider.value = settings.holdingPattern;
+            coinsToggle.checked = settings.coins;
+            planeSizesToggle.checked = settings.planeSizes;
+            realisticLandingToggle.checked = settings.realisticLanding;
+            vipToggle.checked = settings.vipPlanes;
+            cargoToggle.checked = settings.cargoPlanes;
+            emergencyToggle.checked = settings.emergencyPlanes;
+            visualEffectsToggle.checked = settings.visualEffects;
+            soundEffectsToggle.checked = false; // Default to off
+            musicToggle.checked = false; // Default to off
+            goAroundsToggle.checked = settings.goArounds;
+            runwayClosuresToggle.checked = settings.runwayClosures;
+            dayNightCycleToggle.checked = settings.dayNightCycleToggle;
+            stormsToggle.checked = settings.stormsToggle;
+            godModeToggle.checked = settings.godMode;
+            sameColorCollisionToggle.checked = settings.sameColorCollision;
+
+            updateDifficultyLabel();
+            settingsModal.classList.remove('hidden');
+            if (isInitial) {
+                saveAndRestartButton.textContent = "Start Game";
+            } else {
+                saveAndRestartButton.textContent = "Save & Restart";
+            }
+        }
+        
+        function calculateDifficultyMultiplier() {
+            let multiplier = 0.5 + (parseInt(settings.speed) / 100) * 1.0 + (parseInt(settings.spawnRate) / 100) * 1.0;
+            if (settings.fuelSystem) multiplier += 0.3;
+            if (settings.wind) multiplier += 0.3;
+            if (settings.clouds) multiplier += 0.1;
+            if (settings.planeSizes) multiplier += 0.2;
+            if (settings.realisticLanding) multiplier += 0.5;
+            if (settings.vipPlanes) multiplier += 0.2;
+            if (settings.cargoPlanes) multiplier += 0.2;
+            if (settings.emergencyPlanes) multiplier += 0.4;
+            if (!settings.visualEffects) multiplier += 0.1;
+            if (settings.goArounds) multiplier -= 0.2; // Makes game easier
+            if (settings.runwayClosures) multiplier += 0.4;
+            if (settings.dayNightCycleToggle) multiplier += 0.2;
+            if (settings.stormsToggle) multiplier += 0.4;
+            if (settings.sameColorCollision) multiplier += 0.3;
+            
+            const holdingValue = parseInt(settings.holdingPattern);
+            if (holdingValue === 0) {
+                multiplier += 0.5;
+            } else if (holdingValue < 5) {
+                multiplier += (5 - holdingValue) * 0.1;
+            }
+
+            if (!settings.coins) multiplier += 0.2;
+            if (settings.godMode) multiplier = 0.1; // Lower multiplier for god mode
+            return multiplier;
+        }
+
+        function updateDifficultyLabel() {
+            const multiplier = calculateDifficultyMultiplier();
+            difficultyLabel.textContent = `x${multiplier.toFixed(1)}`;
+            updateScoreMultiplierLabel();
+            const holdingValue = holdingPatternSlider.value;
+            if (holdingValue == 0) holdingPatternLabel.textContent = "Off (Hard)";
+            else if (holdingValue == 5) holdingPatternLabel.textContent = "Unlimited (Easy)";
+            else holdingPatternLabel.textContent = holdingValue;
+
+        }
+        
+        function updateScoreMultiplierLabel() {
+            const multiplier = calculateDifficultyMultiplier();
+            scoreMultiplierLabel.textContent = `(x${multiplier.toFixed(1)})`;
+        }
+        
+        function updateTimerDisplay() {
+            const totalSeconds = Math.floor(gameTimer / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function updateWind() {
+            if (settings.wind && !settings.stormsToggle) {
+                wind.angle = Math.random() * Math.PI * 2;
+                wind.speed = 0.1 + Math.random() * 0.2;
+                windIndicator.classList.remove('hidden');
+                windArrow.style.transform = `rotate(${wind.angle + Math.PI/2}rad)`;
+                windParticles = [];
+                for (let i = 0; i < 50; i++) {
+                    windParticles.push({ x: Math.random() * WORLD_BOUNDARY * 2 - WORLD_BOUNDARY, y: Math.random() * WORLD_BOUNDARY * 2 - WORLD_BOUNDARY, radius: Math.random() * 1.5, opacity: 0.2 + Math.random() * 0.3 });
+                }
+            } else {
+                wind.speed = 0;
+                windParticles = [];
+                windIndicator.classList.add('hidden');
+            }
+        }
+        
+        function initializeAestheticClouds() {
+            aestheticClouds = [];
+            if (!settings.clouds) return;
+            
+            const numClouds = Math.min(10, 2 + level);
+            for (let i = 0; i < numClouds; i++) {
+                const cloud = { x: Math.random() * WORLD_BOUNDARY * 2 - WORLD_BOUNDARY, y: Math.random() * WORLD_BOUNDARY * 2 - WORLD_BOUNDARY, radius: 30 + Math.random() * 20 + level * 5, opacity: 0.8, parts: [], speed: 0.2 + Math.random() * 0.2 };
+                const numParts = 5 + Math.floor(Math.random() * 5);
+                for (let j = 0; j < numParts; j++) {
+                    cloud.parts.push({ x: (Math.random() - 0.5) * cloud.radius * 1.5, y: (Math.random() - 0.5) * cloud.radius * 0.8, radius: cloud.radius * (0.4 + Math.random() * 0.6) });
+                }
+                aestheticClouds.push(cloud);
+            }
+        }
+
+        function initializeStorms() {
+            stormClouds = [];
+            if (!settings.stormsToggle) return;
+            createStormCloud(); // Start with one storm cloud
+        }
+        
+        function initializeCoins() {
+            coins = [];
+            if (!settings.coins) return;
+            const numCoins = 3 + Math.floor(level / 2);
+            for (let i = 0; i < numCoins; i++) {
+                coins.push({ x: Math.random() * ISLAND_WIDTH - (ISLAND_WIDTH / 2), y: Math.random() * ISLAND_HEIGHT - (ISLAND_HEIGHT / 2) });
+            }
+        }
+
+        function updateActiveFeaturesDisplay() {
+            activeFeaturesList.innerHTML = '';
+            const features = [
+                { name: `Hangar Slots: ${simultaneousPlanes}`, enabled: true},
+                { name: 'Fuel System', enabled: settings.fuelSystem }, { name: 'Global Wind', enabled: settings.wind }, { name: 'Aesthetic Clouds', enabled: settings.clouds },
+                { name: 'Plane Sizes', enabled: settings.planeSizes }, { name: 'Realistic Landing', enabled: settings.realisticLanding }, { name: 'VIP Planes', enabled: settings.vipPlanes },
+                { name: 'Cargo Planes', enabled: settings.cargoPlanes }, { name: 'Emergency Planes', enabled: settings.emergencyPlanes },
+                { name: 'Visual FX', enabled: settings.visualEffects }, { name: 'Sound FX', enabled: settings.soundEffects }, { name: 'Music', enabled: settings.music },
+                { name: 'Go-Arounds', enabled: settings.goArounds}, { name: 'Runway Closures', enabled: settings.runwayClosures }, 
+                { name: 'Day/Night Cycle', enabled: settings.dayNightCycleToggle }, { name: 'Storms', enabled: settings.stormsToggle },
+                { name: 'Same Color Collisions', enabled: settings.sameColorCollision },
+                { name: 'GOD MODE', enabled: settings.godMode}
+            ];
+            features.forEach(feature => {
+                if (feature.enabled) {
+                    const featureEl = document.createElement('div');
+                    featureEl.textContent = `• ${feature.name}`;
+                    if (feature.name === 'GOD MODE') {
+                        featureEl.classList.add('text-red-500', 'font-bold');
+                    }
+                    activeFeaturesList.appendChild(featureEl);
+                }
+            });
+        }
+        
+        function updateDayNightIndicator() {
+            if (!settings.dayNightCycleToggle) {
+                dayNightIndicator.classList.add('hidden');
+                return;
+            }
+            dayNightIndicator.classList.remove('hidden');
+            const time = dayNightCycle.time / dayNightCycle.duration;
+            const angle = time * 2 * Math.PI - Math.PI / 2;
+            
+            const amplitude = (dayNightIndicator.clientHeight / 2) - (sunIcon.clientHeight / 2) - 4;
+            const sunY = -Math.sin(angle) * amplitude;
+            const moonY = Math.sin(angle) * amplitude;
+
+            sunIcon.style.transform = `translate(-50%, ${sunY}px)`;
+            moonIcon.style.transform = `translate(-50%, ${moonY}px)`;
+
+            if (sunY < moonY) {
+                sunIcon.style.zIndex = 10;
+                moonIcon.style.zIndex = 5;
+            } else {
+                sunIcon.style.zIndex = 5;
+                moonIcon.style.zIndex = 10;
+            }
+        }
+
+        // --- Event Handlers ---
+        function getPointerPos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = evt.clientX || (evt.touches && evt.touches[0] ? evt.touches[0].clientX : 0);
+            const clientY = evt.clientY || (evt.touches && evt.touches[0] ? evt.touches[0].clientY : 0);
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function screenToWorld(pos) {
+            return {
+                x: (pos.x - canvas.width / 2) / camera.zoom + camera.x,
+                y: (pos.y - canvas.height / 2) / camera.zoom + camera.y
+            };
+        }
+
+        function handlePointerDown(evt) {
+            if (!audioInitialized) initializeAudio();
+            if (!gameRunning || isPaused) return;
+            const worldPos = screenToWorld(getPointerPos(evt));
+            
+            if(selectedPlane) {
+                selectedPlane.isSelected = false;
+            }
+            selectedPlane = null;
+
+            for (const plane of planes) {
+                if (!plane.landed && !plane.crashed && distance(worldPos, plane) < PLANE_SIZE) {
+                    selectedPlane = plane;
+                    plane.isSelected = true;
+                    path = [worldPos];
+                    plane.path = [];
+                    break;
+                }
+            }
+        }
+
+        function handlePointerMove(evt) {
+            if (!selectedPlane || !gameRunning || isPaused) return;
+            evt.preventDefault();
+            const worldPos = screenToWorld(getPointerPos(evt));
+            path.push(worldPos);
+        }
+        
+        function isPointInRotatedRect(point, rect) {
+            const dx = point.x - rect.x;
+            const dy = point.y - rect.y;
+            const cos = Math.cos(-rect.angle);
+            const sin = Math.sin(-rect.angle);
+            const rotatedX = dx * cos - dy * sin;
+            const rotatedY = dx * sin + dy * cos;
+            
+            return (rotatedX > -rect.width / 2 - LANDING_ZONE_PADDING &&
+                    rotatedX < rect.width / 2 + LANDING_ZONE_PADDING &&
+                    rotatedY > -rect.height / 2 - LANDING_ZONE_PADDING &&
+                    rotatedY < rect.height / 2 + LANDING_ZONE_PADDING);
+        }
+
+        function handlePointerUp(evt) {
+            if (!selectedPlane || !gameRunning || isPaused) return;
+            
+            const worldPos = screenToWorld(getPointerPos(evt));
+            let landingAssigned = false;
+
+            // Check for landing on an airport
+            for (const airport of airports) {
+                if (isPointInRotatedRect(worldPos, airport)) {
+                    if (airport.isClosed) {
+                        updateTipBanner("This runway is closed!");
+                        break;
+                    }
+                    if (selectedPlane.color === airport.color) {
+                        selectedPlane.path = path;
+                        selectedPlane.path.push({x: airport.x, y: airport.y});
+                        selectedPlane.isLanding = true;
+                        selectedPlane.finalAngle = airport.angle;
+                        selectedPlane.targetAirport = airport;
+                        landingAssigned = true;
+                        selectedPlane.collisionImmunityTimer = 2000;
+                    }
+                    break; 
+                }
+            }
+            
+            if (!landingAssigned && settings.holdingPattern > 0 && distance(worldPos, {x: 0, y: 0}) < HOLDING_PATTERN_RADIUS) {
+                 if (selectedPlane.type === 'emergency') {
+                    updateTipBanner("Emergency planes cannot enter a holding pattern!");
+                } else {
+                    const holdingLimit = settings.holdingPattern == 5 ? Infinity : parseInt(settings.holdingPattern);
+                    const sameColorOrbitingPlanes = planes.filter(p => p.isOrbiting && p.color === selectedPlane.color);
+
+                    if (sameColorOrbitingPlanes.length >= holdingLimit) {
+                        const planeToKick = sameColorOrbitingPlanes.sort((a, b) => a.spawnTime - b.spawnTime)[0];
+                        if (planeToKick) {
+                            planeToKick.isOrbiting = false;
+                            planeToKick.angle = Math.random() * Math.PI * 2;
+                        }
+                    }
+                    
+                    selectedPlane.isOrbiting = true;
+                    selectedPlane.orbitRadius = distance(worldPos, {x: 0, y: 0});
+                    selectedPlane.orbitAngle = Math.atan2(worldPos.y, worldPos.x);
+                    selectedPlane.orbitDirection = holdingPatternDirection;
+                    selectedPlane.path = [];
+                    landingAssigned = true;
+                    createNotification("Entered holding pattern", selectedPlane.x, selectedPlane.y - 30);
+                    selectedPlane.collisionImmunityTimer = 2000;
+                }
+            }
+
+            if(!landingAssigned) {
+                selectedPlane.path = path;
+                selectedPlane.collisionImmunityTimer = 2000;
+            }
+            
+            if (selectedPlane) {
+                selectedPlane.isSelected = false;
+            }
+            selectedPlane = null;
+            path = [];
+        }
+
+        // --- Event Listener Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Assign DOM elements
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            gameContainer = document.getElementById('game-container');
+            inGameUI = document.getElementById('inGameUI');
+            walletEl = document.getElementById('wallet');
+            walletDisplay = document.getElementById('walletDisplay');
+            levelEl = document.getElementById('level');
+            planesLeftEl = document.getElementById('planesLeft');
+            timerEl = document.getElementById('timer');
+            scoreMultiplierLabel = document.getElementById('scoreMultiplierLabel');
+            gameOverModal = document.getElementById('gameOverModal');
+            finalBalanceEl = document.getElementById('finalBalance');
+            gameOverMessage = document.getElementById('gameOverMessage');
+            restartModalButton = document.getElementById('restartModalButton');
+            restartLevelButton = document.getElementById('restartLevelButton');
+            restartGameButton = document.getElementById('restartGameButton');
+            levelCompleteModal = document.getElementById('levelCompleteModal');
+            nextLevelEl = document.getElementById('nextLevel');
+            nextLevelButton = document.getElementById('nextLevelButton');
+            levelSelectModal = document.getElementById('levelSelectModal');
+            levelSelectButton = document.getElementById('levelSelectButton');
+            closeLevelSelectButton = document.getElementById('closeLevelSelectButton');
+            levelGrid = document.getElementById('levelGrid');
+            tipBanner = document.getElementById('tipBanner');
+            settingsModal = document.getElementById('settingsModal');
+            settingsButton = document.getElementById('settingsButton');
+            saveAndRestartButton = document.getElementById('saveAndRestartButton');
+            closeSettingsButton = document.getElementById('closeSettingsButton');
+            planeSpeedSlider = document.getElementById('planeSpeedSlider');
+            spawnRateSlider = document.getElementById('spawnRateSlider');
+            difficultyLabel = document.getElementById('difficultyLabel');
+            fuelToggle = document.getElementById('fuelToggle');
+            windToggle = document.getElementById('windToggle');
+            cloudsToggle = document.getElementById('cloudsToggle');
+            holdingPatternSlider = document.getElementById('holdingPatternSlider');
+            holdingPatternLabel = document.getElementById('holdingPatternLabel');
+            coinsToggle = document.getElementById('coinsToggle');
+            planeSizesToggle = document.getElementById('planeSizesToggle');
+            realisticLandingToggle = document.getElementById('realisticLandingToggle');
+            vipToggle = document.getElementById('vipToggle');
+            cargoToggle = document.getElementById('cargoToggle');
+            emergencyToggle = document.getElementById('emergencyToggle');
+            visualEffectsToggle = document.getElementById('visualEffectsToggle');
+            soundEffectsToggle = document.getElementById('soundEffectsToggle');
+            musicToggle = document.getElementById('musicToggle');
+            goAroundsToggle = document.getElementById('goAroundsToggle');
+            runwayClosuresToggle = document.getElementById('runwayClosuresToggle');
+            dayNightCycleToggle = document.getElementById('dayNightCycleToggle');
+            stormsToggle = document.getElementById('stormsToggle');
+            godModeToggle = document.getElementById('godModeToggle');
+            windIndicator = document.getElementById('windIndicator');
+            windArrow = document.getElementById('windArrow');
+            windSpeed = document.getElementById('windSpeed');
+            fullscreenButton = document.getElementById('fullscreenButton');
+            expandIcon = document.getElementById('expandIcon');
+            shrinkIcon = document.getElementById('shrinkIcon');
+            infoToggle = document.getElementById('infoToggle');
+            infoPanelDetails = document.getElementById('infoPanelDetails');
+            activeFeaturesList = document.getElementById('activeFeaturesList');
+            dayNightIndicator = document.getElementById('dayNightIndicator');
+            sunIcon = document.getElementById('sunIcon');
+            moonIcon = document.getElementById('moonIcon');
+            purchasePlaneBtn = document.getElementById('purchasePlaneBtn');
+            purchaseRunwayBtn = document.getElementById('purchaseRunwayBtn');
+            zoomInButton = document.getElementById('zoomInButton');
+            zoomOutButton = document.getElementById('zoomOutButton');
+            hangarSlotsIndicator = document.getElementById('hangarSlotsIndicator');
+            sameColorCollisionToggle = document.getElementById('sameColorCollisionToggle');
+
+
+            // Setup event listeners
+            window.addEventListener('resize', resizeCanvas);
+            canvas.addEventListener('mousedown', handlePointerDown);
+            canvas.addEventListener('mousemove', handlePointerMove);
+            canvas.addEventListener('mouseup', handlePointerUp);
+            canvas.addEventListener('touchstart', handlePointerDown, {passive: false});
+            canvas.addEventListener('touchmove', handlePointerMove, {passive: false});
+            canvas.addEventListener('touchend', handlePointerUp);
+
+            restartModalButton.addEventListener('click', () => { playSound('uiConfirm', 'E4'); resetGame(1, false); });
+            restartGameButton.addEventListener('click', () => { playSound('uiClick', 'C4'); resetGame(level, true); });
+            restartLevelButton.addEventListener('click', () => { playSound('uiClick', 'C4'); resetGame(level, false); });
+            nextLevelButton.addEventListener('click', startNextLevel);
+            levelSelectButton.addEventListener('click', openLevelSelect);
+            closeLevelSelectButton.addEventListener('click', closeLevelSelect);
+            settingsButton.addEventListener('click', () => openSettings(false));
+            saveAndRestartButton.addEventListener('click', () => {
+                playSound('uiConfirm', 'E4');
+                settingsModal.classList.add('hidden');
+                resetGame(1, true); // Preserve wallet on settings change
+            });
+            closeSettingsButton.addEventListener('click', () => {
+                playSound('uiClick', 'A3');
+                settingsModal.classList.add('hidden');
+                isPaused = false;
+            });
+            
+            fullscreenButton.addEventListener('click', () => {
+                playSound('uiClick', 'C4');
+                if (!document.fullscreenElement) {
+                    gameContainer.requestFullscreen().catch(err => {
+                        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                        updateTipBanner("Fullscreen is not available in this environment.");
+                    });
+                } else {
+                     document.exitFullscreen().catch(err => {
+                        console.error(`Error exiting fullscreen: ${err.message} (${err.name})`);
+                    });
+                }
+            });
+            
+            document.addEventListener('fullscreenchange', () => {
+                if (document.fullscreenElement) {
+                    expandIcon.classList.add('hidden');
+                    shrinkIcon.classList.remove('hidden');
+                } else {
+                    expandIcon.classList.remove('hidden');
+                    shrinkIcon.classList.add('hidden');
+                }
+            });
+
+            zoomInButton.addEventListener('click', () => {
+                playSound('uiClick', 'E4', '16n');
+                camera.zoom = Math.min(3.0, camera.zoom + 0.2);
+            });
+
+            zoomOutButton.addEventListener('click', () => {
+                playSound('uiClick', 'C4', '16n');
+                camera.zoom = Math.max(0.4, camera.zoom - 0.2);
+            });
+            
+            // Settings listeners
+            const settingsInputs = [
+                { el: planeSpeedSlider, key: 'speed', type: 'value' }, { el: spawnRateSlider, key: 'spawnRate', type: 'value' },
+                { el: fuelToggle, key: 'fuelSystem', type: 'checked' }, { el: windToggle, key: 'wind', type: 'checked' },
+                { el: cloudsToggle, key: 'clouds', type: 'checked' }, { el: holdingPatternSlider, key: 'holdingPattern', type: 'value' },
+                { el: coinsToggle, key: 'coins', type: 'checked' }, { el: planeSizesToggle, key: 'planeSizes', type: 'checked' },
+                { el: realisticLandingToggle, key: 'realisticLanding', type: 'checked' }, { el: vipToggle, key: 'vipPlanes', type: 'checked' },
+                { el: cargoToggle, key: 'cargoPlanes', type: 'checked' }, { el: emergencyToggle, key: 'emergencyPlanes', type: 'checked' },
+                { el: visualEffectsToggle, key: 'visualEffects', type: 'checked' }, { el: soundEffectsToggle, key: 'soundEffects', type: 'checked', default: false },
+                { el: musicToggle, key: 'music', type: 'checked', default: false }, { el: goAroundsToggle, key: 'goArounds', type: 'checked' },
+                { el: runwayClosuresToggle, key: 'runwayClosures', type: 'checked' }, 
+                { el: dayNightCycleToggle, key: 'dayNightCycleToggle', type: 'checked' },
+                { el: stormsToggle, key: 'stormsToggle', type: 'checked' },
+                { el: sameColorCollisionToggle, key: 'sameColorCollision', type: 'checked' },
+                { el: godModeToggle, key: 'godMode', type: 'checked' }
+            ];
+
+            settingsInputs.forEach(input => {
+                if (input.el) {
+                    const eventType = input.type === 'checked' ? 'change' : 'input';
+                    input.el.addEventListener(eventType, (e) => {
+                        playSound('uiClick', 'A3');
+                        settings[input.key] = e.target[input.type];
+                        if (input.key === 'music') {
+                            toggleMusic(settings.music);
+                        }
+                        updateDifficultyLabel();
+                    });
+                }
+            });
+
+            infoToggle.addEventListener('click', () => { playSound('uiClick', 'C4'); infoPanelDetails.classList.toggle('hidden'); });
+            
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    playSound('uiClick', 'C4');
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    
+                    const tabId = button.dataset.tab;
+                    tabContents.forEach(content => {
+                        content.id === `${tabId}Content` ? content.classList.remove('hidden') : content.classList.add('hidden');
+                    });
+                });
+            });
+
+            // Purchase button listeners
+            purchasePlaneBtn.addEventListener('click', () => {
+                const cost = getHangarUpgradeCost();
+                if (score >= cost) {
+                    score -= cost;
+                    simultaneousPlanes++;
+                    updateWalletDisplay();
+                    playSound('purchase', 'G4', '8n');
+                }
+            });
+
+            purchaseRunwayBtn.addEventListener('click', () => {
+                const cost = getNextLevelCost();
+                if (score >= cost) {
+                    score -= cost;
+                    updateWalletDisplay();
+                    levelUp();
+                    playSound('purchase', 'C5', '4n');
+                }
+            });
+
+
+            // --- Initial Start ---
+            initializeFirebase();
+        });
+    </script>
+</body>
+</html>
