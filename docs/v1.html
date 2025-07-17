@@ -219,6 +219,14 @@
                             </div>
                             <div class="relative flex items-start">
                                 <div class="flex items-center h-5">
+                                    <input id="differentColorCollisionToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="differentColorCollisionToggle" class="font-medium text-gray-700">Different Color Collisions</label>
+                                </div>
+                            </div>
+                            <div class="relative flex items-start">
+                                <div class="flex items-center h-5">
                                     <input id="godModeToggle" type="checkbox" class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300 rounded">
                                 </div>
                                 <div class="ml-3 text-sm">
@@ -390,7 +398,7 @@
             activeFeaturesList, vipToggle, cargoToggle, emergencyToggle,
             visualEffectsToggle, soundEffectsToggle, musicToggle, goAroundsToggle, runwayClosuresToggle, dayNightCycleToggle, stormsToggle,
             dayNightIndicator, sunIcon, moonIcon, walletDisplay, purchasePlaneBtn, purchaseRunwayBtn, godModeToggle,
-            zoomInButton, zoomOutButton, hangarSlotsIndicator, sameColorCollisionToggle;
+            zoomInButton, zoomOutButton, hangarSlotsIndicator, sameColorCollisionToggle, differentColorCollisionToggle;
         
         // =================================================================================
         // Game State Variables
@@ -465,6 +473,7 @@
             stormsToggle: false,
             godMode: false,
             sameColorCollision: false,
+            differentColorCollision: true, // Default to on
         };
         let wind = { angle: 0, speed: 0 };
 
@@ -736,6 +745,10 @@
 
             const baseSpeed = (0.55 + (settings.speed / 100) * 2.2) * speedModifier;
 
+            let scaleFactor = 1;
+            if (size === 'small') scaleFactor = 0.8;
+            if (size === 'large') scaleFactor = 1.2;
+
             const plane = {
                 x: position.x, y: position.y,
                 angle: angleToCenter + angleDeviation,
@@ -752,6 +765,7 @@
                 opacity: 1, finalAngle: 0,
                 hasBeenOnScreen: false,
                 collisionImmunityTimer: 0,
+                collisionRadius: (PLANE_SIZE / 2.5) * scaleFactor,
             };
             
             return plane;
@@ -1250,9 +1264,7 @@
                 if (settings.fuelSystem) {
                     plane.fuel -= 0.05 * delta;
                     if (plane.fuel <= 0 && !plane.crashed) {
-                        let message = "A plane ran out of fuel!";
-                        if (plane.type === 'emergency') message = "An emergency plane ran out of fuel! Mission failed.";
-                        triggerCrash(plane, message);
+                        triggerCrash(plane); // FIX: Decoupled from endGame
                     }
                 }
                 
@@ -1294,7 +1306,7 @@
                             }
 
                             if (!isProperLanding) {
-                                triggerCrash(plane, "Improper landing approach!");
+                                triggerCrash(plane); // FIX: Decoupled from endGame
                             } else {
                                 plane.landed = true;
                                 plane.angle = plane.finalAngle;
@@ -1375,7 +1387,7 @@
                     } 
                     
                     if (plane.type === 'emergency' && !plane.crashed) {
-                        triggerCrash(plane, "An emergency plane went off-radar!");
+                        triggerCrash(plane); // FIX: Decoupled from endGame
                         continue; 
                     } 
                     
@@ -1545,21 +1557,27 @@
             updateNotifications(delta);
             updateWaterRipples(delta);
 
+            // =================================================================================
+            // START: Fixed Collision and Game Over Logic
+            // =================================================================================
+            let gameOverReason = null;
+
+            // --- Collision Detection Loop ---
             for (let i = 0; i < planes.length; i++) {
                 for (let j = i + 1; j < planes.length; j++) {
                     const plane1 = planes[i];
                     const plane2 = planes[j];
 
+                    // Skip check if planes are invalid, landed, already crashed, immune, etc.
                     if (!plane1 || !plane2 || plane1.landed || plane2.landed || plane1.crashed || plane2.crashed || plane1.isGoAround || plane2.isGoAround || plane1.collisionImmunityTimer > 0 || plane2.collisionImmunityTimer > 0) {
-                        continue;
-                    }
-                    
-                    if (!settings.sameColorCollision && plane1.color === plane2.color) {
                         continue;
                     }
 
                     const dist = distance(plane1, plane2);
+                    const combinedRadius = plane1.collisionRadius + plane2.collisionRadius;
+                    const sameColor = plane1.color === plane2.color;
 
+                    // --- Go-Around Logic (Near Miss) ---
                     if (settings.goArounds && dist < GO_AROUND_RADIUS && timeSinceLastGoAround >= 60000) {
                         const planeToReroute = plane1.spawnTime > plane2.spawnTime ? plane1 : plane2;
                         if (!planeToReroute.isGoAround) {
@@ -1571,14 +1589,50 @@
                             createNotification("GO AROUND!", planeToReroute.x, planeToReroute.y - 30, 'rgba(239, 68, 68, 0.9)');
                             timeSinceLastGoAround = 0;
                         }
-                    } else if (dist < COLLISION_RADIUS) {
-                        if (!plane1.crashed && !plane2.crashed) {
-                            triggerCrash(plane1, "A mid-air collision occurred!");
-                            triggerCrash(plane2, "A mid-air collision occurred!");
+                        continue; // A go-around was initiated, so skip crash check for this pair
+                    }
+                    
+                    // --- Crash Logic ---
+                    const collisionRuleApplies = (sameColor && settings.sameColorCollision) || (!sameColor && settings.differentColorCollision);
+
+                    if (collisionRuleApplies && dist < combinedRadius) {
+                        triggerCrash(plane1);
+                        triggerCrash(plane2);
+                        gameOverReason = "A mid-air collision occurred!";
+                        break; // A crash happened, exit inner loop
+                    }
+                }
+                if (gameOverReason) break; // Exit outer loop if a crash was found
+            }
+
+            // --- Check for other game-over conditions if no collision occurred ---
+            if (!gameOverReason) {
+                for (const plane of planes) {
+                    if (plane.crashed) {
+                        if (plane.fuel <= 0) {
+                            gameOverReason = "A plane ran out of fuel!";
+                            if (plane.type === 'emergency') {
+                                gameOverReason = "An emergency plane ran out of fuel! Mission failed.";
+                            }
+                        } else if (plane.hasBeenOnScreen && (plane.x < -WORLD_BOUNDARY - 100 || plane.x > WORLD_BOUNDARY + 100 || plane.y < -WORLD_BOUNDARY - 100 || plane.y > WORLD_BOUNDARY + 100)) {
+                             if (plane.type === 'emergency') {
+                                gameOverReason = "An emergency plane went off-radar!";
+                             }
+                        } else {
+                            gameOverReason = "An improper landing approach occurred!";
                         }
+                        break; // Found a crashed plane, no need to check others
                     }
                 }
             }
+
+            // --- Trigger End Game if a reason was found ---
+            if (gameOverReason) {
+                endGame(gameOverReason);
+            }
+            // =================================================================================
+            // END: Fixed Collision and Game Over Logic
+            // =================================================================================
         }
         
         function gameLoop(timestamp) {
@@ -1624,15 +1678,13 @@
             }
         }
         
-        function triggerCrash(plane, message) {
+        // FIX: This function now only handles the state and effects for a single plane.
+        // The game-ending logic is handled separately in the main update loop.
+        function triggerCrash(plane) {
             if (plane.crashed || settings.godMode) return;
             plane.crashed = true;
             createEffect('crash', plane.x, plane.y);
             playSound('crash', 'C2', '8n', 0.1);
-            
-            if (gameRunning) {
-                endGame(message);
-            }
         }
 
         function endGame(message) {
@@ -1954,6 +2006,7 @@
             stormsToggle.checked = settings.stormsToggle;
             godModeToggle.checked = settings.godMode;
             sameColorCollisionToggle.checked = settings.sameColorCollision;
+            differentColorCollisionToggle.checked = settings.differentColorCollision;
 
             updateDifficultyLabel();
             settingsModal.classList.remove('hidden');
@@ -1980,6 +2033,7 @@
             if (settings.dayNightCycleToggle) multiplier += 0.2;
             if (settings.stormsToggle) multiplier += 0.4;
             if (settings.sameColorCollision) multiplier += 0.3;
+            if (settings.differentColorCollision) multiplier += 0.2;
             
             const holdingValue = parseInt(settings.holdingPattern);
             if (holdingValue === 0) {
@@ -2074,6 +2128,7 @@
                 { name: 'Go-Arounds', enabled: settings.goArounds}, { name: 'Runway Closures', enabled: settings.runwayClosures }, 
                 { name: 'Day/Night Cycle', enabled: settings.dayNightCycleToggle }, { name: 'Storms', enabled: settings.stormsToggle },
                 { name: 'Same Color Collisions', enabled: settings.sameColorCollision },
+                { name: 'Different Color Collisions', enabled: settings.differentColorCollision },
                 { name: 'GOD MODE', enabled: settings.godMode}
             ];
             features.forEach(feature => {
@@ -2295,6 +2350,7 @@
             zoomOutButton = document.getElementById('zoomOutButton');
             hangarSlotsIndicator = document.getElementById('hangarSlotsIndicator');
             sameColorCollisionToggle = document.getElementById('sameColorCollisionToggle');
+            differentColorCollisionToggle = document.getElementById('differentColorCollisionToggle');
 
             window.addEventListener('resize', resizeCanvas);
             canvas.addEventListener('mousedown', handlePointerDown);
@@ -2374,6 +2430,7 @@
                 { el: dayNightCycleToggle, key: 'dayNightCycleToggle', type: 'checked' },
                 { el: stormsToggle, key: 'stormsToggle', type: 'checked' },
                 { el: sameColorCollisionToggle, key: 'sameColorCollision', type: 'checked' },
+                { el: differentColorCollisionToggle, key: 'differentColorCollision', type: 'checked' },
                 { el: godModeToggle, key: 'godMode', type: 'checked' }
             ];
 
