@@ -457,8 +457,8 @@
             cargoPlanes: false,
             emergencyPlanes: false,
             visualEffects: true,
-            soundEffects: true,
-            music: true,
+            soundEffects: false,
+            music: false,
             goArounds: false,
             runwayClosures: false,
             dayNightCycleToggle: false,
@@ -535,16 +535,16 @@
             musicPlayer = pattern;
             Tone.Transport.bpm.value = 120;
 
-            if(settings.music) {
-                Tone.Transport.start();
-                musicPlayer.start(0);
-            }
-
+            // Don't auto-start music, wait for user to enable it
             audioInitialized = true;
         }
 
         function playSound(sound, note = null, duration = '8n', cooldown = 0) {
-            if (!audioInitialized || !settings.soundEffects) return;
+            if (!audioInitialized || !settings.soundEffects || !audioInitialized) return;
+            // Additional check to ensure we don't play music sounds if music is disabled
+            if (sound === 'uiConfirm' || sound === 'uiClick' || sound === 'purchase') {
+                if (!settings.soundEffects) return;
+            } else if (!settings.music) return;
             
             const now = Tone.now();
             if (cooldown > 0) {
@@ -1305,7 +1305,13 @@
 
         // --- Core Game Loop ---
         function update(timestamp) {
-            if (!gameRunning) return;
+            if (!gameRunning) {
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                return;
+            }
             
             if (isPaused) {
                 lastFrameTime = timestamp;
@@ -1317,6 +1323,7 @@
                 return;
             }
             const deltaTime = timestamp - lastFrameTime;
+           
             lastFrameTime = timestamp;
 
             // Normal top-down update logic
@@ -1686,107 +1693,46 @@
         }
         
         // --- Game Flow & State Management ---
-        function triggerCrash(plane, onGround = false) {
+        function triggerCrash(plane) {
             if (plane.crashed) return;
             plane.crashed = true;
             createEffect('crash', plane.x, plane.y);
-            if(onGround) {
-                createEffect('groundFire', plane.x, plane.y);
-            }
             playSound('crash', 'C2', '8n', 0.1);
-        }
-
-        function createEffect(type, x, y) {
-            if (!settings.visualEffects) return;
-            let particleCount, colors;
-            if (type === 'smoke') {
-                particleCount = 5;
-                colors = ['100, 116, 139', '249, 115, 22'];
-            } else if (type === 'crash') {
-                particleCount = 40;
-                colors = ['249, 115, 22', '239, 68, 68', '252, 211, 77', '100, 116, 139'];
-            } else if (type === 'groundFire') {
-                effects.push({ type: 'groundFire', x: x, y: y, life: 200, particles: [] });
-                return; // This effect type manages its own particles
-            } else { // Poof
-                particleCount = 20;
-                colors = ['255, 255, 255'];
-            }
-
-            const particles = [];
-            for (let i = 0; i < particleCount; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const speed = Math.random() * (type === 'crash' ? 4 : 2) + 1;
-                particles.push({
-                    x: x, y: y,
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed,
-                    radius: Math.random() * 3 + 1,
-                    opacity: 1,
-                    life: 40 + Math.random() * 30,
-                    maxLife: 70,
-                    color: colors[Math.floor(Math.random() * colors.length)]
-                });
-            }
-            effects.push({ type, particles });
-        }
-
-        function createNotification(text, x, y, color = 'rgba(255, 255, 255, 0.9)') {
-            notifications.push({ text, x, y, opacity: 1, color });
-        }
-
-
-        function checkLevelEnd() {
-            updatePlanesLeft();
-            const totalPlanesForLevel = getPlanesToLandForLevel(level);
-            if (planesLanded >= totalPlanesForLevel) {
-                setTimeout(levelUp, 1000);
-            }
-        }
-        
-        function levelUp() {
-            isPaused = true;
-            playSound('uiConfirm', 'C4', '4n');
-            if (level + 1 > highestLevel) {
-                highestLevel = level + 1;
-                saveGameState(highestLevel);
-            }
-            nextLevelEl.textContent = level + 1;
-            levelCompleteModal.classList.remove('hidden');
-        }
-
-        function startNextLevel() {
-            playSound('uiClick', 'C4');
-            levelCompleteModal.classList.add('hidden');
-            level++;
-            planes = [];
-            levelEl.textContent = level;
-            planesLanded = 0;
-            planesSpawnedThisLevel = 0;
             
-            levelAnnouncement = { text: `Level ${level}`, opacity: 1, scale: 1.5 };
-
-            generateIslandShape();
-            initializeAirports();
-            updatePlanesLeft();
-            updateTipBanner();
-            updateWind();
-            initializeAestheticClouds();
-            initializeStorms();
-            initializeCoins();
-            holdingPatternDirection = (Math.random() < 0.5) ? 1 : -1;
-
-            isPaused = false;
+            // Schedule game over after showing the crash effect
+            setTimeout(() => {
+                if (gameRunning) {
+                    gameRunning = false;
+                    isPaused = true;
+                    gameOverMessage.textContent = "A plane has crashed!";
+                    finalBalanceEl.textContent = `$${score}`;
+                    gameOverModal.classList.remove('hidden');
+                }
+            }, 1000);
+            
+            // Schedule game over after a brief delay to show the crash
+            setTimeout(() => {
+                endGame('A plane has crashed!');
+            }, 800);
         }
 
         function endGame(message) {
             if (!gameRunning) return; // Prevent multiple calls
             gameRunning = false;
+            isPaused = true; // Ensure game is paused
+            
+            // Cancel any pending animation frame
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            
+            // Show game over modal
             gameOverMessage.textContent = message;
             finalBalanceEl.textContent = `$${score}`;
             gameOverModal.classList.remove('hidden');
         }
-        
+
         function resetGame(startLevel = 1, preserveWallet = false) {
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
