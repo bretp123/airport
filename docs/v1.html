@@ -734,7 +734,7 @@
                     break;
             }
 
-            const baseSpeed = (0.5 + (settings.speed / 100) * 2.0) * speedModifier; // Reduced max speed multiplier
+            const baseSpeed = (0.5 + (settings.speed / 100) * 2.2) * speedModifier;
 
             const plane = {
                 x: position.x, y: position.y,
@@ -1275,8 +1275,8 @@
                     const target = plane.path[0];
                     const angle = Math.atan2(target.y - plane.y, target.x - plane.x);
                     plane.angle = angle;
-                    plane.x += Math.cos(angle) * plane.speed * 1.2 * delta;
-                    plane.y += Math.sin(angle) * plane.speed * 1.2 * delta;
+                    plane.x += Math.cos(angle) * plane.speed * 1.3 * delta;
+                    plane.y += Math.sin(angle) * plane.speed * 1.3 * delta;
 
                     if (distance(plane, target) < 15) {
                         plane.path.shift();
@@ -1480,32 +1480,23 @@
 
         // --- Core Game Loop ---
         function update(timestamp) {
-            if (!gameRunning) {
-                if (animationFrameId) {
-                    cancelAnimationFrame(animationFrameId);
-                    animationFrameId = null;
-                }
-                return;
-            }
+            if (!gameRunning) return;
             
             if (isPaused) {
                 lastFrameTime = timestamp;
-                requestAnimationFrame(gameLoop);
                 return;
             }
             
             if (!lastFrameTime) {
                 lastFrameTime = timestamp;
-                requestAnimationFrame(gameLoop);
                 return;
             }
 
             let deltaTime = timestamp - lastFrameTime;
             lastFrameTime = timestamp;
             
-            // Cap delta time to prevent huge jumps
             if (deltaTime > 100) deltaTime = 100;
-            const delta = deltaTime / 16.67; // Normalize to 60fps
+            const delta = deltaTime / 16.67;
 
             if (levelAnnouncement.opacity > 0) {
                 levelAnnouncement.opacity -= 0.008 * delta;
@@ -1550,14 +1541,12 @@
                 }
             }
             
-            // Update all game objects
             updatePlanes(delta);
             updateEffects(delta);
             updateScorePopups(delta);
             updateNotifications(delta);
             updateWaterRipples(delta);
 
-            // Collision Detection
             for (let i = 0; i < planes.length; i++) {
                 for (let j = i + 1; j < planes.length; j++) {
                     const plane1 = planes[i];
@@ -1595,9 +1584,10 @@
         }
         
         function gameLoop(timestamp) {
-            animationFrameId = requestAnimationFrame(gameLoop);
+            if (!gameRunning) return;
             update(timestamp);
             draw();
+            animationFrameId = requestAnimationFrame(gameLoop);
         }
         
         function draw() {
@@ -1629,7 +1619,6 @@
             
             ctx.restore();
 
-            // Draw night overlay last, over everything in world space
             if (settings.dayNightCycleToggle) {
                 drawNightOverlay();
             }
@@ -1649,20 +1638,28 @@
         function endGame(message) {
             if (!gameRunning) return; 
             gameRunning = false;
+            pauseGame();
             
             setTimeout(() => {
-                isPaused = true;
-                if (animationFrameId) {
-                    cancelAnimationFrame(animationFrameId);
-                    animationFrameId = null;
-                }
                 gameOverMessage.textContent = message;
                 finalBalanceEl.textContent = `$${score}`;
                 gameOverModal.classList.remove('hidden');
             }, 1000);
         }
 
+        function pauseGame() {
+            isPaused = true;
+        }
+
+        function resumeGame() {
+            if (!gameRunning) return;
+            isPaused = false;
+            lastFrameTime = undefined; // Reset to avoid a large jump
+            requestAnimationFrame(gameLoop);
+        }
+
         function resetGame(startLevel = 1, preserveWallet = false) {
+            gameRunning = false;
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = null;
@@ -1689,12 +1686,10 @@
             planesLanded = 0;
             planesSpawnedThisLevel = 0;
             scorePopups = [];
-            isPaused = false;
             selectedPlane = null;
             path = [];
             gameTimer = 0;
             timeSinceLastBonus = 0;
-            lastFrameTime = undefined;
             dayNightCycle.time = 0;
             runwayClosure.airportId = null;
             runwayClosure.timer = 0;
@@ -1733,7 +1728,7 @@
             inGameUI.classList.remove('hidden');
             
             gameRunning = true;
-            requestAnimationFrame(gameLoop);
+            resumeGame();
         }
 
         function spawnNewPlane(forceType = null, forceColor = null) {
@@ -1763,7 +1758,7 @@
 
         function getSkyColors() {
             if (!settings.dayNightCycleToggle) return { top: '#60A5FA', bottom: '#3B82F6' };
-            const time = dayNightCycle.time / dayNightCycle.duration; // 0 to 1
+            const time = dayNightCycle.time / dayNightCycle.duration;
             const colors = {
                 dawn: { top: [247, 147, 26], bottom: [252, 70, 107] },
                 day: { top: [96, 165, 250], bottom: [59, 130, 246] },
@@ -1771,13 +1766,13 @@
                 night: { top: [15, 23, 42], bottom: [30, 41, 59] }
             };
 
-            if (time < 0.25) { // Dawn
+            if (time < 0.25) {
                 return { top: lerpColor(colors.night.top, colors.dawn.top, time * 4), bottom: lerpColor(colors.night.bottom, colors.dawn.bottom, time * 4) };
-            } else if (time < 0.5) { // Day
+            } else if (time < 0.5) {
                 return { top: lerpColor(colors.dawn.top, colors.day.top, (time - 0.25) * 4), bottom: lerpColor(colors.dawn.bottom, colors.day.bottom, (time - 0.25) * 4) };
-            } else if (time < 0.75) { // Dusk
+            } else if (time < 0.75) {
                 return { top: lerpColor(colors.day.top, colors.dusk.top, (time - 0.5) * 4), bottom: lerpColor(colors.day.bottom, colors.dusk.bottom, (time - 0.5) * 4) };
-            } else { // Night
+            } else {
                 return { top: lerpColor(colors.dusk.top, colors.night.top, (time - 0.75) * 4), bottom: lerpColor(colors.dusk.bottom, colors.night.bottom, (time - 0.75) * 4) };
             }
         }
@@ -1788,7 +1783,7 @@
                 x: -WORLD_BOUNDARY - radius,
                 y: Math.random() * WORLD_BOUNDARY * 2 - WORLD_BOUNDARY,
                 radius: radius,
-                speed: 0.2 + Math.random() * 0.2, // Slower storm clouds
+                speed: 0.2 + Math.random() * 0.2,
                 opacity: 0.6 + Math.random() * 0.2,
                 wind: { angle: (Math.random() - 0.5) * 0.5, speed: 0.2 + Math.random() * 0.3 },
                 parts: [],
@@ -1908,7 +1903,7 @@
         
         function openLevelSelect() {
             playSound('uiClick', 'C4');
-            isPaused = true;
+            pauseGame();
             levelGrid.innerHTML = '';
             for (let i = 1; i <= highestLevel; i++) {
                 const button = document.createElement('button');
@@ -1933,13 +1928,13 @@
 
         function closeLevelSelect() {
             playSound('uiClick', 'C4');
-            isPaused = false;
             levelSelectModal.classList.add('hidden');
+            resumeGame();
         }
 
         function openSettings(isInitial = false) {
             if(!isInitial) playSound('uiClick', 'C4');
-            isPaused = true;
+            pauseGame();
             planeSpeedSlider.value = settings.speed;
             spawnRateSlider.value = settings.spawnRate;
             fuelToggle.checked = settings.fuelSystem;
@@ -2046,7 +2041,7 @@
             
             const numClouds = Math.min(10, 2 + level);
             for (let i = 0; i < numClouds; i++) {
-                const cloud = { x: Math.random() * WORLD_BOUNDARY * 2 - WORLD_BOUNDARY, y: Math.random() * WORLD_BOUNDARY * 2 - WORLD_BOUNDARY, radius: 30 + Math.random() * 20 + level * 5, opacity: 0.8, parts: [], speed: 0.1 + Math.random() * 0.1 };
+                const cloud = { x: Math.random() * WORLD_BOUNDARY * 2 - WORLD_BOUNDARY, y: Math.random() * WORLD_BOUNDARY * 2 - WORLD_BOUNDARY, radius: 30 + Math.random() * 20 + level * 5, opacity: 0.8, parts: [], speed: 0.12 + Math.random() * 0.12 };
                 const numParts = 5 + Math.floor(Math.random() * 5);
                 for (let j = 0; j < numParts; j++) {
                     cloud.parts.push({ x: (Math.random() - 0.5) * cloud.radius * 1.5, y: (Math.random() - 0.5) * cloud.radius * 0.8, radius: cloud.radius * (0.4 + Math.random() * 0.6) });
@@ -2336,10 +2331,7 @@
             closeSettingsButton.addEventListener('click', () => {
                 playSound('uiClick', 'A3');
                 settingsModal.classList.add('hidden');
-                isPaused = false;
-                if (!gameRunning) {
-                    requestAnimationFrame(gameLoop);
-                }
+                resumeGame();
             });
             
             fullscreenButton.addEventListener('click', () => {
@@ -2453,7 +2445,7 @@
             const totalForLevel = getPlanesToLandForLevel(level);
             if (planesLanded >= totalForLevel) {
                 gameRunning = false;
-                isPaused = true;
+                pauseGame();
                 if (level >= highestLevel) {
                     highestLevel = level + 1;
                     saveGameState(highestLevel);
