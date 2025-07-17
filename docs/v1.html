@@ -734,7 +734,7 @@
                     break;
             }
 
-            const baseSpeed = (0.5 + (settings.speed / 100) * 2.2) * speedModifier;
+            const baseSpeed = (0.55 + (settings.speed / 100) * 2.2) * speedModifier;
 
             const plane = {
                 x: position.x, y: position.y,
@@ -881,6 +881,7 @@
             ctx.fillRect(-airport.width / 2, -airport.height / 2, airport.width, airport.height);
             
             if (settings.visualEffects && airport.approachFlash > 0) {
+                airport.approachFlash -= 0.02;
                 ctx.fillStyle = `rgba(255, 255, 255, ${airport.approachFlash * 0.5})`;
                 ctx.fillRect(-airport.width / 2, -airport.height / 2, airport.width, airport.height);
             }
@@ -1037,8 +1038,8 @@
                 ctx.moveTo(plane.x, plane.y);
                 plane.path.forEach(point => ctx.lineTo(point.x, point.y));
                 ctx.strokeStyle = pathColor;
-                ctx.lineWidth = 2;
-                ctx.setLineDash([2, 7]);
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 10]);
                 ctx.stroke();
                 ctx.setLineDash([]);
             }
@@ -1050,8 +1051,8 @@
                 ctx.moveTo(selectedPlane.x, selectedPlane.y);
                 path.forEach(point => ctx.lineTo(point.x, point.y));
                 ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)';
-                ctx.lineWidth = 3;
-                ctx.setLineDash([2, 7]);
+                ctx.lineWidth = 4;
+                ctx.setLineDash([5, 10]);
                 ctx.stroke();
                 ctx.setLineDash([]);
             }
@@ -1480,10 +1481,7 @@
 
         // --- Core Game Loop ---
         function update(timestamp) {
-            if (!gameRunning) return;
-            
-            if (isPaused) {
-                lastFrameTime = timestamp;
+            if (!gameRunning || isPaused) {
                 return;
             }
             
@@ -1585,7 +1583,9 @@
         
         function gameLoop(timestamp) {
             if (!gameRunning) return;
-            update(timestamp);
+            if (!isPaused) {
+                update(timestamp);
+            }
             draw();
             animationFrameId = requestAnimationFrame(gameLoop);
         }
@@ -1652,14 +1652,11 @@
         }
 
         function resumeGame() {
-            if (!gameRunning) return;
             isPaused = false;
-            lastFrameTime = undefined; // Reset to avoid a large jump
-            requestAnimationFrame(gameLoop);
+            lastFrameTime = undefined;
         }
 
         function resetGame(startLevel = 1, preserveWallet = false) {
-            gameRunning = false;
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = null;
@@ -1729,6 +1726,7 @@
             
             gameRunning = true;
             resumeGame();
+            requestAnimationFrame(gameLoop);
         }
 
         function spawnNewPlane(forceType = null, forceColor = null) {
@@ -2185,8 +2183,6 @@
                         break;
                     }
                     if (selectedPlane.color === airport.color) {
-                        selectedPlane.path = path;
-                        selectedPlane.path.push({x: airport.x, y: airport.y});
                         selectedPlane.isLanding = true;
                         selectedPlane.finalAngle = airport.angle;
                         selectedPlane.targetAirport = airport;
@@ -2216,17 +2212,13 @@
                     selectedPlane.orbitRadius = distance(worldPos, {x: 0, y: 0});
                     selectedPlane.orbitAngle = Math.atan2(worldPos.y, worldPos.x);
                     selectedPlane.orbitDirection = holdingPatternDirection;
-                    selectedPlane.path = [];
-                    landingAssigned = true;
+                    landingAssigned = true; // Set to true to prevent path assignment below
                     createNotification("Entered holding pattern", selectedPlane.x, selectedPlane.y - 30);
                     selectedPlane.collisionImmunityTimer = 2000;
                 }
             }
 
-            if(!landingAssigned) {
-                selectedPlane.path = path;
-                selectedPlane.collisionImmunityTimer = 2000;
-            }
+            selectedPlane.path = path;
             
             if (selectedPlane) {
                 selectedPlane.isSelected = false;
