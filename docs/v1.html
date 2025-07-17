@@ -385,7 +385,7 @@
             levelSelectModal, levelSelectButton, closeLevelSelectButton, levelGrid, tipBanner,
             settingsModal, settingsButton, saveAndRestartButton, closeSettingsButton, planeSpeedSlider, spawnRateSlider,
             difficultyLabel, fuelToggle, windToggle, cloudsToggle, windIndicator, windArrow,
-            windSpeed, fullscreenButton, expandIcon, shrinkIcon, holdingPatternSlider, holdingPatternLabel, 
+            fullscreenButton, expandIcon, shrinkIcon, holdingPatternSlider, holdingPatternLabel, 
             coinsToggle, planeSizesToggle, realisticLandingToggle, infoToggle, infoPanelDetails, 
             activeFeaturesList, vipToggle, cargoToggle, emergencyToggle,
             visualEffectsToggle, soundEffectsToggle, musicToggle, goAroundsToggle, runwayClosuresToggle, dayNightCycleToggle, stormsToggle,
@@ -535,16 +535,12 @@
             musicPlayer = pattern;
             Tone.Transport.bpm.value = 120;
 
-            // Don't auto-start music, wait for user to enable it
             audioInitialized = true;
         }
 
         function playSound(sound, note = null, duration = '8n', cooldown = 0) {
-            if (!audioInitialized || !settings.soundEffects || !audioInitialized) return;
-            // Additional check to ensure we don't play music sounds if music is disabled
-            if (sound === 'uiConfirm' || sound === 'uiClick' || sound === 'purchase') {
-                if (!settings.soundEffects) return;
-            } else if (!settings.music) return;
+            // FIX: Simplified logic to only check for soundEffects setting, as this function handles effects, not music.
+            if (!audioInitialized || !settings.soundEffects) return;
             
             const now = Tone.now();
             if (cooldown > 0) {
@@ -569,6 +565,7 @@
             if (!audioInitialized) return;
             if (enabled) {
                 Tone.Transport.start();
+                musicPlayer.start(0);
             } else {
                 Tone.Transport.stop();
             }
@@ -589,12 +586,14 @@
                     await signInAnonymously(auth);
                 }
                 
-                userId = auth.currentUser.uid;
+                // FIX: Added optional chaining to prevent errors if currentUser is null
+                userId = auth.currentUser?.uid;
                 await loadGameState();
                 openSettings(true);
 
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
+                // Fallback to opening settings even if Firebase fails
                 openSettings(true);
             }
         }
@@ -745,7 +744,6 @@
                 orbitDirection: 1,
                 opacity: 1, finalAngle: 0,
                 hasBeenOnScreen: false,
-                isCrashing: false, // Add new state for death spiral
                 collisionImmunityTimer: 0,
             };
             
@@ -826,9 +824,8 @@
             const centerY = 0;
             
             let skyColors = getSkyColors();
-            // This gradient is in world space, so it will move with the camera. Let's make it static.
             ctx.save();
-            ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to draw background
+            ctx.setTransform(1, 0, 0, 1, 0, 0); 
             const screenCenterX = canvas.width / 2;
             const screenCenterY = canvas.height / 2;
             const gradient = ctx.createRadialGradient(screenCenterX, screenCenterY, canvas.width * 0.2, screenCenterX, screenCenterY, canvas.width * 0.7);
@@ -836,7 +833,7 @@
             gradient.addColorStop(1, skyColors.bottom);
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.restore(); // Restore camera transform
+            ctx.restore(); 
             
             if (islandShape.length < 2) return;
             
@@ -1320,13 +1317,13 @@
             
             if (!lastFrameTime) {
                 lastFrameTime = timestamp;
+                animationFrameId = requestAnimationFrame(gameLoop);
                 return;
             }
             const deltaTime = timestamp - lastFrameTime;
-           
+            
             lastFrameTime = timestamp;
 
-            // Normal top-down update logic
             if (levelAnnouncement.opacity > 0) {
                 levelAnnouncement.opacity -= 0.008;
                 if (levelAnnouncement.scale > 1) {
@@ -1361,7 +1358,6 @@
                 let spawnedThisCycle = false;
                 while (planes.length < simultaneousPlanes) {
                     if (!spawnNewPlane()) {
-                        // Stop trying if a plane fails to spawn (e.g., no runways available)
                         break;
                     }
                     spawnedThisCycle = true;
@@ -1371,45 +1367,16 @@
                 }
             }
 
+            // FIX: Changed to a reverse for loop to safely remove elements during iteration
+            for (let i = planes.length - 1; i >= 0; i--) {
+                const plane = planes[i];
 
-            planes.forEach((plane, index) => {
-                if (plane.landed) {
+                if (plane.landed || plane.crashed) {
                     plane.opacity -= 0.02;
                     if (plane.opacity <= 0) {
-                        planes.splice(index, 1);
+                        planes.splice(i, 1);
                     }
-                    return;
-                }
-                
-                if (plane.crashed) {
-                    plane.opacity -= 0.02;
-                    if (plane.opacity <= 0) {
-                        planes.splice(index, 1);
-                    }
-                    return;
-                }
-
-                if (plane.isCrashing) {
-                    plane.crashOrbitAngle += 0.2;
-                    plane.crashOrbitRadius -= 0.3;
-                    plane.x = plane.crashOrbitCenter.x + Math.cos(plane.crashOrbitAngle) * plane.crashOrbitRadius;
-                    plane.y = plane.crashOrbitCenter.y + Math.sin(plane.crashOrbitAngle) * plane.crashOrbitRadius;
-                    plane.angle += 0.2; // Visual spin
-
-                    if (settings.visualEffects && Math.random() < 0.5) {
-                        createEffect('smoke', plane.x, plane.y);
-                    }
-
-                    if (plane.crashOrbitRadius <= 1) {
-                        if (!plane.crashed) {
-                            triggerCrash(plane);
-                            if (gameRunning) {
-                                gameRunning = false;
-                                setTimeout(() => endGame("A mid-air collision occurred!"), 2000);
-                            }
-                        }
-                    }
-                    return; // Skip all other logic for this plane
+                    continue; // Use continue to skip to the next plane
                 }
                 
                 if (settings.visualEffects) {
@@ -1433,14 +1400,10 @@
 
                 if (settings.fuelSystem) {
                     plane.fuel -= 0.05;
-                    if (plane.fuel <= 0) {
-                        triggerCrash(plane, true);
+                    if (plane.fuel <= 0 && !plane.crashed) {
                         let message = "A plane ran out of fuel!";
                         if (plane.type === 'emergency') message = "An emergency plane ran out of fuel! Mission failed.";
-                        if(gameRunning) {
-                            gameRunning = false;
-                            setTimeout(() => endGame(message), 2000);
-                        }
+                        triggerCrash(plane, message);
                     }
                 }
                 
@@ -1482,12 +1445,7 @@
                             }
 
                             if (!isProperLanding) {
-                                triggerCrash(plane, true); // Ground crash
-                                if (gameRunning) {
-                                    gameRunning = false;
-                                    setTimeout(() => endGame("Improper landing approach!"), 2000);
-                                }
-                                return;
+                                triggerCrash(plane, "Improper landing approach!");
                             } else {
                                 plane.landed = true;
                                 plane.angle = plane.finalAngle;
@@ -1564,28 +1522,19 @@
                             const newPlane = createPlane(plane.type, plane.color);
                             if (newPlane) planes.push(newPlane);
                         }, 2000);
-                        planes.splice(index, 1);
-                        return;
+                        planes.splice(i, 1);
+                        continue;
                     } 
                     
-                    if (plane.type === 'emergency') {
-                        if (!plane.crashed && !plane.isCrashing) {
-                            plane.isCrashing = true;
-                            plane.path = [];
-                            plane.x = Math.max(0, Math.min(plane.x, canvas.width));
-                            plane.y = Math.max(0, Math.min(plane.y, canvas.height));
-                            plane.crashOrbitCenter = { x: plane.x, y: plane.y };
-                            plane.crashOrbitRadius = 50;
-                            plane.crashOrbitAngle = Math.atan2(plane.y - canvas.height/2, plane.x - canvas.width/2);
-                        }
-                        return; 
+                    if (plane.type === 'emergency' && !plane.crashed) {
+                        triggerCrash(plane, "An emergency plane went off-radar!");
+                        continue; 
                     } 
                     
                     spawnNewPlane();
-                    planes.splice(index, 1);
-                    return;
+                    planes.splice(i, 1);
+                    continue;
                 }
-
 
                 coins.forEach((coin, coinIndex) => {
                     if (distance(plane, coin) < PLANE_SIZE / 2 + COIN_RADIUS) {
@@ -1596,14 +1545,15 @@
                         coins.splice(coinIndex, 1);
                     }
                 });
-            });
+            }
 
+            // Collision Detection
             for (let i = 0; i < planes.length; i++) {
                 for (let j = i + 1; j < planes.length; j++) {
                     const plane1 = planes[i];
                     const plane2 = planes[j];
 
-                    if (plane1.landed || plane2.landed || plane1.crashed || plane2.crashed || plane1.isGoAround || plane2.isGoAround || plane1.isCrashing || plane2.isCrashing || plane1.collisionImmunityTimer > 0 || plane2.collisionImmunityTimer > 0) {
+                    if (plane1.landed || plane2.landed || plane1.crashed || plane2.crashed || plane1.isGoAround || plane2.isGoAround || plane1.collisionImmunityTimer > 0 || plane2.collisionImmunityTimer > 0) {
                         continue;
                     }
                     
@@ -1627,18 +1577,9 @@
                             timeSinceLastGoAround = 0;
                         }
                     } else if (dist < COLLISION_RADIUS) {
-                        if (!plane1.isCrashing && !plane2.isCrashing) {
-                            plane1.isCrashing = true;
-                            plane1.path = [];
-                            plane1.crashOrbitCenter = { x: (plane1.x + plane2.x) / 2, y: (plane1.y + plane2.y) / 2 };
-                            plane1.crashOrbitRadius = 30;
-                            plane1.crashOrbitAngle = Math.atan2(plane1.y - plane1.crashOrbitCenter.y, plane1.x - plane1.crashOrbitCenter.x);
-
-                            plane2.isCrashing = true;
-                            plane2.path = [];
-                            plane2.crashOrbitCenter = { x: (plane1.x + plane2.x) / 2, y: (plane1.y + plane2.y) / 2 };
-                            plane2.crashOrbitRadius = 30;
-                            plane2.crashOrbitAngle = Math.atan2(plane2.y - plane2.crashOrbitCenter.y, plane2.x - plane2.crashOrbitCenter.x);
+                        if (!plane1.crashed && !plane2.crashed) {
+                            triggerCrash(plane1, "A mid-air collision occurred!");
+                            triggerCrash(plane2, "A mid-air collision occurred!");
                         }
                     }
                 }
@@ -1670,7 +1611,7 @@
             
             planes.forEach(drawPlaneTrail);
             
-            drawEffects(); // Draw lingering effects behind planes
+            drawEffects(); 
             
             planes.forEach(drawPlane);
             
@@ -1693,49 +1634,39 @@
         }
         
         // --- Game Flow & State Management ---
-        function triggerCrash(plane) {
-            if (plane.crashed) return;
+        // FIX: Simplified crash logic into a single function
+        function triggerCrash(plane, message) {
+            if (plane.crashed || settings.godMode) return;
             plane.crashed = true;
             createEffect('crash', plane.x, plane.y);
             playSound('crash', 'C2', '8n', 0.1);
             
-            // Schedule game over after showing the crash effect
-            setTimeout(() => {
-                if (gameRunning) {
-                    gameRunning = false;
-                    isPaused = true;
-                    gameOverMessage.textContent = "A plane has crashed!";
-                    finalBalanceEl.textContent = `$${score}`;
-                    gameOverModal.classList.remove('hidden');
-                }
-            }, 1000);
-            
-            // Schedule game over after a brief delay to show the crash
-            setTimeout(() => {
-                endGame('A plane has crashed!');
-            }, 800);
+            if (gameRunning) {
+                endGame(message);
+            }
         }
 
+        // FIX: Simplified endGame logic
         function endGame(message) {
-            if (!gameRunning) return; // Prevent multiple calls
+            if (!gameRunning) return; 
             gameRunning = false;
-            isPaused = true; // Ensure game is paused
             
-            // Cancel any pending animation frame
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
-            
-            // Show game over modal
-            gameOverMessage.textContent = message;
-            finalBalanceEl.textContent = `$${score}`;
-            gameOverModal.classList.remove('hidden');
+            setTimeout(() => {
+                isPaused = true;
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                gameOverMessage.textContent = message;
+                finalBalanceEl.textContent = `$${score}`;
+                gameOverModal.classList.remove('hidden');
+            }, 1000);
         }
 
         function resetGame(startLevel = 1, preserveWallet = false) {
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
             }
 
             resizeCanvas();
@@ -2023,8 +1954,8 @@
             cargoToggle.checked = settings.cargoPlanes;
             emergencyToggle.checked = settings.emergencyPlanes;
             visualEffectsToggle.checked = settings.visualEffects;
-            soundEffectsToggle.checked = false; // Default to off
-            musicToggle.checked = false; // Default to off
+            soundEffectsToggle.checked = settings.soundEffects;
+            musicToggle.checked = settings.music;
             goAroundsToggle.checked = settings.goArounds;
             runwayClosuresToggle.checked = settings.runwayClosures;
             dayNightCycleToggle.checked = settings.dayNightCycleToggle;
@@ -2366,7 +2297,6 @@
             godModeToggle = document.getElementById('godModeToggle');
             windIndicator = document.getElementById('windIndicator');
             windArrow = document.getElementById('windArrow');
-            windSpeed = document.getElementById('windSpeed');
             fullscreenButton = document.getElementById('fullscreenButton');
             expandIcon = document.getElementById('expandIcon');
             shrinkIcon = document.getElementById('shrinkIcon');
@@ -2395,8 +2325,12 @@
 
             restartModalButton.addEventListener('click', () => { playSound('uiConfirm', 'E4'); resetGame(1, false); });
             restartGameButton.addEventListener('click', () => { playSound('uiClick', 'C4'); resetGame(level, true); });
-            restartLevelButton.addEventListener('click', () => { playSound('uiClick', 'C4'); resetGame(level, false); });
-            nextLevelButton.addEventListener('click', startNextLevel);
+            restartLevelButton.addEventListener('click', () => { playSound('uiClick', 'C4'); resetGame(level, true); });
+            nextLevelButton.addEventListener('click', () => {
+                playSound('uiConfirm', 'E4');
+                level++;
+                resetGame(level, true);
+            });
             levelSelectButton.addEventListener('click', openLevelSelect);
             closeLevelSelectButton.addEventListener('click', closeLevelSelect);
             settingsButton.addEventListener('click', () => openSettings(false));
@@ -2453,8 +2387,8 @@
                 { el: coinsToggle, key: 'coins', type: 'checked' }, { el: planeSizesToggle, key: 'planeSizes', type: 'checked' },
                 { el: realisticLandingToggle, key: 'realisticLanding', type: 'checked' }, { el: vipToggle, key: 'vipPlanes', type: 'checked' },
                 { el: cargoToggle, key: 'cargoPlanes', type: 'checked' }, { el: emergencyToggle, key: 'emergencyPlanes', type: 'checked' },
-                { el: visualEffectsToggle, key: 'visualEffects', type: 'checked' }, { el: soundEffectsToggle, key: 'soundEffects', type: 'checked', default: false },
-                { el: musicToggle, key: 'music', type: 'checked', default: false }, { el: goAroundsToggle, key: 'goArounds', type: 'checked' },
+                { el: visualEffectsToggle, key: 'visualEffects', type: 'checked' }, { el: soundEffectsToggle, key: 'soundEffects', type: 'checked' },
+                { el: musicToggle, key: 'music', type: 'checked' }, { el: goAroundsToggle, key: 'goArounds', type: 'checked' },
                 { el: runwayClosuresToggle, key: 'runwayClosures', type: 'checked' }, 
                 { el: dayNightCycleToggle, key: 'dayNightCycleToggle', type: 'checked' },
                 { el: stormsToggle, key: 'stormsToggle', type: 'checked' },
@@ -2515,10 +2449,54 @@
                 }
             });
 
-
             // --- Initial Start ---
             initializeFirebase();
         });
+
+        function checkLevelEnd() {
+            updatePlanesLeft();
+            const totalForLevel = getPlanesToLandForLevel(level);
+            if (planesLanded >= totalForLevel) {
+                gameRunning = false;
+                isPaused = true;
+                if (level >= highestLevel) {
+                    highestLevel = level + 1;
+                    saveGameState(highestLevel);
+                }
+                levelCompleteModal.classList.remove('hidden');
+                nextLevelEl.textContent = level + 1;
+            }
+        }
+
+        function levelUp() {
+            level++;
+            resetGame(level, true);
+        }
+
+        function createEffect(type, x, y) {
+            if (!settings.visualEffects) return;
+            const particleCount = type === 'crash' ? 80 : 20;
+            const particles = [];
+            for (let i = 0; i < particleCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * (type === 'crash' ? 5 : 2);
+                let color = '255, 255, 255'; // poof
+                if (type === 'crash') {
+                    color = ['249, 115, 22', '239, 68, 68', '55, 65, 81'][Math.floor(Math.random() * 3)];
+                } else if (type === 'smoke') {
+                    color = '55, 65, 81';
+                }
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: Math.random() * 3 + 1,
+                    opacity: 1,
+                    color: color
+                });
+            }
+            effects.push({ type, particles });
+        }
     </script>
 </body>
 </html>
