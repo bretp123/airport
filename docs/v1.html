@@ -539,7 +539,6 @@
         }
 
         function playSound(sound, note = null, duration = '8n', cooldown = 0) {
-            // FIX: Simplified logic to only check for soundEffects setting, as this function handles effects, not music.
             if (!audioInitialized || !settings.soundEffects) return;
             
             const now = Tone.now();
@@ -586,14 +585,12 @@
                     await signInAnonymously(auth);
                 }
                 
-                // FIX: Added optional chaining to prevent errors if currentUser is null
                 userId = auth.currentUser?.uid;
                 await loadGameState();
                 openSettings(true);
 
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
-                // Fallback to opening settings even if Firebase fails
                 openSettings(true);
             }
         }
@@ -655,6 +652,16 @@
             setTimeout(() => {
                 tipBanner.style.display = 'none';
             }, 5000);
+        }
+
+        function createNotification(text, x, y, color = 'rgba(255, 255, 255, 0.9)') {
+            notifications.push({
+                text: text,
+                x: x,
+                y: y,
+                opacity: 1,
+                color: color
+            });
         }
 
         function resizeCanvas() {
@@ -727,7 +734,7 @@
                     break;
             }
 
-            const baseSpeed = (0.5 + (settings.speed / 100) * 2.5) * speedModifier;
+            const baseSpeed = (0.5 + (settings.speed / 100) * 2.0) * speedModifier; // Reduced max speed multiplier
 
             const plane = {
                 x: position.x, y: position.y,
@@ -876,7 +883,6 @@
             if (settings.visualEffects && airport.approachFlash > 0) {
                 ctx.fillStyle = `rgba(255, 255, 255, ${airport.approachFlash * 0.5})`;
                 ctx.fillRect(-airport.width / 2, -airport.height / 2, airport.width, airport.height);
-                airport.approachFlash -= 0.02;
             }
 
             ctx.strokeStyle = '#F9FAFB';
@@ -1052,24 +1058,17 @@
         }
         
         function drawScorePopups() {
-            scorePopups.forEach((popup, index) => {
+            scorePopups.forEach((popup) => {
                 ctx.save();
-                popup.scale += 0.01;
                 ctx.font = `bold ${20 * popup.scale}px Inter`;
                 ctx.fillStyle = `rgba(34, 139, 34, ${popup.opacity})`;
                 ctx.fillText(`+$${popup.score}`, popup.x, popup.y);
                 ctx.restore();
-
-                popup.y -= 0.8;
-                popup.opacity -= 0.02;
-                if (popup.opacity <= 0) {
-                    scorePopups.splice(index, 1);
-                }
             });
         }
 
         function drawNotifications() {
-            notifications.forEach((notification, index) => {
+            notifications.forEach((notification) => {
                 ctx.save();
                 ctx.font = `bold 14px Inter`;
                 ctx.textAlign = 'center';
@@ -1080,12 +1079,6 @@
                 ctx.fillStyle = notification.color || `rgba(255, 255, 255, ${notification.opacity})`;
                 ctx.fillText(notification.text, notification.x, notification.y);
                 ctx.restore();
-
-                notification.y -= 0.5;
-                notification.opacity -= 0.015;
-                if (notification.opacity <= 0) {
-                    notifications.splice(index, 1);
-                }
             });
         }
         
@@ -1111,14 +1104,6 @@
             if (!settings.wind || wind.speed === 0) return;
 
             windParticles.forEach(p => {
-                p.x += wind.speed * Math.cos(wind.angle) * 1.5;
-                p.y += wind.speed * Math.sin(wind.angle) * 1.5;
-                
-                if (p.x < -WORLD_BOUNDARY) p.x = WORLD_BOUNDARY;
-                if (p.x > WORLD_BOUNDARY) p.x = -WORLD_BOUNDARY;
-                if (p.y < -WORLD_BOUNDARY) p.y = WORLD_BOUNDARY;
-                if (p.y > WORLD_BOUNDARY) p.y = -WORLD_BOUNDARY;
-
                 ctx.strokeStyle = `rgba(255, 255, 255, ${p.opacity})`;
                 ctx.lineWidth = p.radius;
                 ctx.beginPath();
@@ -1131,11 +1116,6 @@
         function drawAestheticClouds() {
             if (!settings.clouds) return;
             aestheticClouds.forEach(cloud => {
-                cloud.x += cloud.speed;
-                if (cloud.x > WORLD_BOUNDARY + cloud.radius * 4) {
-                    cloud.x = -WORLD_BOUNDARY - cloud.radius * 4;
-                }
-                
                 ctx.beginPath();
                 ctx.fillStyle = `rgba(255, 255, 255, ${cloud.opacity})`;
                 for(const part of cloud.parts) {
@@ -1149,11 +1129,6 @@
         function drawStorms() {
             if (!settings.stormsToggle) return;
             stormClouds.forEach(cloud => {
-                cloud.x += cloud.speed;
-                if (cloud.x > WORLD_BOUNDARY + cloud.radius * 4) {
-                    cloud.x = -WORLD_BOUNDARY - cloud.radius * 4;
-                }
-                
                 ctx.beginPath();
                 ctx.fillStyle = `rgba(100, 100, 120, ${cloud.opacity})`;
                 for(const part of cloud.parts) {
@@ -1162,7 +1137,6 @@
                 }
                 ctx.fill();
 
-                // Draw rain
                 ctx.strokeStyle = 'rgba(174,194,224,0.7)';
                 ctx.lineWidth = 1;
                 ctx.lineCap = 'round';
@@ -1176,62 +1150,13 @@
         }
         
         function drawEffects() {
-            effects.forEach((effect, index) => {
-                if (effect.type === 'groundFire') {
-                    effect.life--;
-                    if (effect.life <= 0 && effect.particles.length === 0) {
-                        effects.splice(index, 1);
-                        return;
-                    }
-                    // Spawn new particles if effect is active
-                    if (effect.life > 0 && Math.random() < 0.7) {
-                        effect.particles.push({
-                            x: effect.x + (Math.random() - 0.5) * 15,
-                            y: effect.y,
-                            vx: (Math.random() - 0.5) * 0.3,
-                            vy: -0.5 - Math.random() * 0.5,
-                            radius: Math.random() * 5 + 1,
-                            opacity: 1,
-                            maxLife: 50 + Math.random() * 50,
-                            life: 50 + Math.random() * 50,
-                            color: ['55, 65, 81', '249, 115, 22'][Math.floor(Math.random() * 1.3)] // Smoke and a bit of fire
-                        });
-                    }
-
-                    // Update and draw particles for this effect
-                    effect.particles.forEach((p, pIndex) => {
-                        p.life--;
-                        if (p.life <= 0) {
-                            effect.particles.splice(pIndex, 1);
-                            return;
-                        }
-                        p.x += p.vx;
-                        p.y += p.vy;
-                        p.opacity = p.life / p.maxLife;
-
-                        ctx.fillStyle = `rgba(${p.color}, ${p.opacity * 0.7})`;
-                        ctx.beginPath();
-                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                        ctx.fill();
-                    });
-                } else if (effect.type === 'poof' || effect.type === 'crash' || effect.type === 'smoke') {
-                    effect.particles.forEach((p, pIndex) => {
-                        p.x += p.vx;
-                        p.y += p.vy;
-                        p.opacity -= 0.02;
-                         if (p.opacity <= 0) {
-                            effect.particles.splice(pIndex, 1);
-                            return;
-                        }
-                        ctx.fillStyle = `rgba(${p.color}, ${p.opacity})`;
-                        ctx.beginPath();
-                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                        ctx.fill();
-                    });
-                    if (effect.particles.length === 0) {
-                        effects.splice(index, 1);
-                    }
-                }
+            effects.forEach((effect) => {
+                effect.particles.forEach((p) => {
+                    ctx.fillStyle = `rgba(${p.color}, ${p.opacity})`;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                });
             });
         }
         
@@ -1257,13 +1182,7 @@
 
         function drawWaterRipples() {
             if (!settings.visualEffects) return;
-            waterRipples.forEach((ripple, index) => {
-                ripple.radius += 0.5;
-                ripple.opacity -= 0.01;
-                if (ripple.opacity <= 0) {
-                    waterRipples.splice(index, 1);
-                    return;
-                }
+            waterRipples.forEach((ripple) => {
                 ctx.strokeStyle = `rgba(255, 255, 255, ${ripple.opacity * 0.5})`;
                 ctx.lineWidth = 1.5;
                 ctx.beginPath();
@@ -1279,8 +1198,11 @@
                 opacity = Math.sin((time - 0.5) * 2 * Math.PI) * 0.4;
             }
             if (opacity > 0) {
+                ctx.save();
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
                 ctx.fillStyle = `rgba(0, 0, 30, ${opacity})`;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
             }
         }
         
@@ -1300,83 +1222,17 @@
             ctx.restore();
         }
 
-        // --- Core Game Loop ---
-        function update(timestamp) {
-            if (!gameRunning) {
-                if (animationFrameId) {
-                    cancelAnimationFrame(animationFrameId);
-                    animationFrameId = null;
-                }
-                return;
-            }
-            
-            if (isPaused) {
-                lastFrameTime = timestamp;
-                return;
-            }
-            
-            if (!lastFrameTime) {
-                lastFrameTime = timestamp;
-                animationFrameId = requestAnimationFrame(gameLoop);
-                return;
-            }
-            const deltaTime = timestamp - lastFrameTime;
-            
-            lastFrameTime = timestamp;
-
-            if (levelAnnouncement.opacity > 0) {
-                levelAnnouncement.opacity -= 0.008;
-                if (levelAnnouncement.scale > 1) {
-                    levelAnnouncement.scale -= 0.005;
-                }
-            }
-
-            gameTimer += deltaTime;
-            timeSinceLastGoAround += deltaTime;
-            updateTimerDisplay();
-            if (settings.dayNightCycleToggle) {
-                updateDayNightCycle(deltaTime);
-                updateDayNightIndicator();
-            }
-            if (settings.stormsToggle) {
-                updateStorms(deltaTime);
-            }
-            updateAestheticClouds(deltaTime);
-            updateRunwayClosures(deltaTime);
-            
-            timeSinceLastBonus += deltaTime;
-            if (timeSinceLastBonus >= 5000) {
-                score += level;
-                updateWalletDisplay();
-                timeSinceLastBonus = 0;
-            }
-
-            timeSinceLastSpawn += deltaTime;
-            const spawnInterval = 4500 - (settings.spawnRate / 100) * 4000;
-            
-            if (timeSinceLastSpawn > spawnInterval) {
-                let spawnedThisCycle = false;
-                while (planes.length < simultaneousPlanes) {
-                    if (!spawnNewPlane()) {
-                        break;
-                    }
-                    spawnedThisCycle = true;
-                }
-                if(spawnedThisCycle) {
-                    timeSinceLastSpawn = 0;
-                }
-            }
-
-            // FIX: Changed to a reverse for loop to safely remove elements during iteration
+        // --- Update Functions (called from main loop) ---
+        function updatePlanes(delta) {
             for (let i = planes.length - 1; i >= 0; i--) {
                 const plane = planes[i];
 
                 if (plane.landed || plane.crashed) {
-                    plane.opacity -= 0.02;
+                    plane.opacity -= 0.02 * delta;
                     if (plane.opacity <= 0) {
                         planes.splice(i, 1);
                     }
-                    continue; // Use continue to skip to the next plane
+                    continue;
                 }
                 
                 if (settings.visualEffects) {
@@ -1384,22 +1240,14 @@
                     if (plane.trail.length > 20) {
                         plane.trail.shift();
                     }
-                    if (!isPointInPolygon({x: plane.x, y: plane.y}, islandShape)) {
-                        if (Math.random() < 0.1) {
-                            waterRipples.push({x: plane.x, y: plane.y, radius: 5, opacity: 1});
-                        }
-                    }
-                    if (plane.type === 'emergency' && Math.random() < 0.3) {
-                        createEffect('smoke', plane.x, plane.y);
-                    }
                 }
 
                 if (plane.collisionImmunityTimer > 0) {
-                    plane.collisionImmunityTimer -= deltaTime;
+                    plane.collisionImmunityTimer -= 16.67 * delta;
                 }
 
                 if (settings.fuelSystem) {
-                    plane.fuel -= 0.05;
+                    plane.fuel -= 0.05 * delta;
                     if (plane.fuel <= 0 && !plane.crashed) {
                         let message = "A plane ran out of fuel!";
                         if (plane.type === 'emergency') message = "An emergency plane ran out of fuel! Mission failed.";
@@ -1409,14 +1257,14 @@
                 
                 if (settings.wind) {
                     let windSpeed = wind.speed;
-                    plane.x += windSpeed * Math.cos(wind.angle);
-                    plane.y += windSpeed * Math.sin(wind.angle);
+                    plane.x += windSpeed * Math.cos(wind.angle) * delta;
+                    plane.y += windSpeed * Math.sin(wind.angle) * delta;
                 }
 
                 stormClouds.forEach(cloud => {
                     if (distance(plane, cloud) < cloud.radius) {
-                        plane.x += cloud.wind.speed * Math.cos(cloud.wind.angle);
-                        plane.y += cloud.wind.speed * Math.sin(cloud.wind.angle);
+                        plane.x += cloud.wind.speed * Math.cos(cloud.wind.angle) * delta;
+                        plane.y += cloud.wind.speed * Math.sin(cloud.wind.angle) * delta;
                     }
                 });
 
@@ -1427,8 +1275,8 @@
                     const target = plane.path[0];
                     const angle = Math.atan2(target.y - plane.y, target.x - plane.x);
                     plane.angle = angle;
-                    plane.x += Math.cos(angle) * plane.speed * 1.5;
-                    plane.y += Math.sin(angle) * plane.speed * 1.5;
+                    plane.x += Math.cos(angle) * plane.speed * 1.2 * delta;
+                    plane.y += Math.sin(angle) * plane.speed * 1.2 * delta;
 
                     if (distance(plane, target) < 15) {
                         plane.path.shift();
@@ -1438,7 +1286,7 @@
 
                             if (settings.realisticLanding && airport) {
                                 const angleDiff = Math.abs(diffAngle(plane.angle, airport.angle));
-                                const tolerance = Math.PI / 4; // 45 degrees
+                                const tolerance = Math.PI / 4;
                                 if (angleDiff > tolerance && angleDiff < (Math.PI - tolerance)) {
                                     isProperLanding = false;
                                 }
@@ -1480,14 +1328,13 @@
                     if (plane.isOrbiting) {
                         const centerX = 0;
                         const centerY = 0;
-                        plane.orbitAngle += (plane.speed / plane.orbitRadius) * plane.orbitDirection;
+                        plane.orbitAngle += (plane.speed / plane.orbitRadius) * plane.orbitDirection * delta;
                         const targetX = centerX + Math.cos(plane.orbitAngle) * plane.orbitRadius;
                         const targetY = centerY + Math.sin(plane.orbitAngle) * plane.orbitRadius;
                         plane.angle = Math.atan2(targetY - plane.y, targetX - plane.x);
                         plane.x = targetX;
                         plane.y = targetY;
                     } else {
-                        // Default movement for planes without a path
                         const centerX = 0;
                         const centerY = 0;
                         const distToCenter = distance(plane, {x: centerX, y: centerY});
@@ -1505,8 +1352,8 @@
                             }
                         }
                         
-                        plane.x += Math.cos(plane.angle) * plane.speed;
-                        plane.y += Math.sin(plane.angle) * plane.speed;
+                        plane.x += Math.cos(plane.angle) * plane.speed * delta;
+                        plane.y += Math.sin(plane.angle) * plane.speed * delta;
                     }
                 }
 
@@ -1546,6 +1393,169 @@
                     }
                 });
             }
+        }
+
+        function updateEffects(delta) {
+            effects.forEach((effect, index) => {
+                if (effect.type === 'groundFire') {
+                    effect.life -= delta;
+                    if (effect.life <= 0 && effect.particles.length === 0) {
+                        effects.splice(index, 1);
+                        return;
+                    }
+                    if (effect.life > 0 && Math.random() < 0.7) {
+                        effect.particles.push({
+                            x: effect.x + (Math.random() - 0.5) * 15, y: effect.y,
+                            vx: (Math.random() - 0.5) * 0.3, vy: -0.5 - Math.random() * 0.5,
+                            radius: Math.random() * 5 + 1, opacity: 1,
+                            maxLife: 50 + Math.random() * 50, life: 50 + Math.random() * 50,
+                            color: ['55, 65, 81', '249, 115, 22'][Math.floor(Math.random() * 1.3)]
+                        });
+                    }
+                }
+
+                for (let i = effect.particles.length - 1; i >= 0; i--) {
+                    const p = effect.particles[i];
+                    p.x += p.vx * delta;
+                    p.y += p.vy * delta;
+                    if (effect.type === 'groundFire') {
+                        p.life -= delta;
+                        p.opacity = p.life / p.maxLife;
+                        if (p.life <= 0) {
+                            effect.particles.splice(i, 1);
+                        }
+                    } else {
+                        p.opacity -= 0.02 * delta;
+                        if (p.opacity <= 0) {
+                            effect.particles.splice(i, 1);
+                        }
+                    }
+                }
+
+                if (effect.particles.length === 0 && effect.type !== 'groundFire') {
+                    effects.splice(index, 1);
+                }
+            });
+        }
+
+        function updateScorePopups(delta) {
+            scorePopups.forEach((popup, index) => {
+                popup.y -= 0.8 * delta;
+                popup.opacity -= 0.02 * delta;
+                popup.scale += 0.01 * delta;
+                if (popup.opacity <= 0) {
+                    scorePopups.splice(index, 1);
+                }
+            });
+        }
+
+        function updateNotifications(delta) {
+            notifications.forEach((notification, index) => {
+                notification.y -= 0.5 * delta;
+                notification.opacity -= 0.015 * delta;
+                if (notification.opacity <= 0) {
+                    notifications.splice(index, 1);
+                }
+            });
+        }
+
+        function updateWaterRipples(delta) {
+            waterRipples.forEach((ripple, index) => {
+                ripple.radius += 0.5 * delta;
+                ripple.opacity -= 0.01 * delta;
+                if (ripple.opacity <= 0) {
+                    waterRipples.splice(index, 1);
+                }
+            });
+             if (settings.visualEffects) {
+                planes.forEach(plane => {
+                    if (!isPointInPolygon({x: plane.x, y: plane.y}, islandShape)) {
+                        if (Math.random() < 0.1) {
+                            waterRipples.push({x: plane.x, y: plane.y, radius: 5, opacity: 1});
+                        }
+                    }
+                });
+            }
+        }
+
+        // --- Core Game Loop ---
+        function update(timestamp) {
+            if (!gameRunning) {
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                return;
+            }
+            
+            if (isPaused) {
+                lastFrameTime = timestamp;
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+            
+            if (!lastFrameTime) {
+                lastFrameTime = timestamp;
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            let deltaTime = timestamp - lastFrameTime;
+            lastFrameTime = timestamp;
+            
+            // Cap delta time to prevent huge jumps
+            if (deltaTime > 100) deltaTime = 100;
+            const delta = deltaTime / 16.67; // Normalize to 60fps
+
+            if (levelAnnouncement.opacity > 0) {
+                levelAnnouncement.opacity -= 0.008 * delta;
+                if (levelAnnouncement.scale > 1) {
+                    levelAnnouncement.scale -= 0.005 * delta;
+                }
+            }
+
+            gameTimer += deltaTime;
+            timeSinceLastGoAround += deltaTime;
+            updateTimerDisplay();
+            if (settings.dayNightCycleToggle) {
+                updateDayNightCycle(deltaTime);
+                updateDayNightIndicator();
+            }
+            if (settings.stormsToggle) {
+                updateStorms(delta);
+            }
+            updateAestheticClouds(delta);
+            updateRunwayClosures(deltaTime);
+            
+            timeSinceLastBonus += deltaTime;
+            if (timeSinceLastBonus >= 5000) {
+                score += level;
+                updateWalletDisplay();
+                timeSinceLastBonus = 0;
+            }
+
+            timeSinceLastSpawn += deltaTime;
+            const spawnInterval = 4500 - (settings.spawnRate / 100) * 4000;
+            
+            if (timeSinceLastSpawn > spawnInterval) {
+                let spawnedThisCycle = false;
+                while (planes.length < simultaneousPlanes) {
+                    if (!spawnNewPlane()) {
+                        break;
+                    }
+                    spawnedThisCycle = true;
+                }
+                if(spawnedThisCycle) {
+                    timeSinceLastSpawn = 0;
+                }
+            }
+            
+            // Update all game objects
+            updatePlanes(delta);
+            updateEffects(delta);
+            updateScorePopups(delta);
+            updateNotifications(delta);
+            updateWaterRipples(delta);
 
             // Collision Detection
             for (let i = 0; i < planes.length; i++) {
@@ -1553,14 +1563,12 @@
                     const plane1 = planes[i];
                     const plane2 = planes[j];
 
-                    if (plane1.landed || plane2.landed || plane1.crashed || plane2.crashed || plane1.isGoAround || plane2.isGoAround || plane1.collisionImmunityTimer > 0 || plane2.collisionImmunityTimer > 0) {
+                    if (!plane1 || !plane2 || plane1.landed || plane2.landed || plane1.crashed || plane2.crashed || plane1.isGoAround || plane2.isGoAround || plane1.collisionImmunityTimer > 0 || plane2.collisionImmunityTimer > 0) {
                         continue;
                     }
                     
-                    if (!settings.sameColorCollision) {
-                        if (plane1.color === plane2.color) {
-                            continue;
-                        }
+                    if (!settings.sameColorCollision && plane1.color === plane2.color) {
+                        continue;
                     }
 
                     const dist = distance(plane1, plane2);
@@ -1595,46 +1603,38 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // --- Apply Camera Transform ---
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
             ctx.scale(camera.zoom, camera.zoom);
             ctx.translate(-camera.x, -camera.y);
 
-            // --- Draw World-Space Elements ---
             drawBackground();
             drawWaterRipples();
             drawWind();
             drawHoldingPattern();
             airports.forEach(drawAirport);
             drawCoins();
-            
             planes.forEach(drawPlaneTrail);
-            
             drawEffects(); 
-            
             planes.forEach(drawPlane);
-            
             planes.forEach(plane => { drawPath(plane); });
             drawSelectionPath();
-
             drawAestheticClouds();
             if (settings.stormsToggle) {
                 drawStorms();
-            }
-            if (settings.dayNightCycleToggle) {
-                drawNightOverlay();
             }
             drawScorePopups();
             drawNotifications();
             drawLevelAnnouncement();
             
-            // --- Restore Transform ---
             ctx.restore();
+
+            // Draw night overlay last, over everything in world space
+            if (settings.dayNightCycleToggle) {
+                drawNightOverlay();
+            }
         }
         
-        // --- Game Flow & State Management ---
-        // FIX: Simplified crash logic into a single function
         function triggerCrash(plane, message) {
             if (plane.crashed || settings.godMode) return;
             plane.crashed = true;
@@ -1646,7 +1646,6 @@
             }
         }
 
-        // FIX: Simplified endGame logic
         function endGame(message) {
             if (!gameRunning) return; 
             gameRunning = false;
@@ -1734,7 +1733,7 @@
             inGameUI.classList.remove('hidden');
             
             gameRunning = true;
-            gameLoop();
+            requestAnimationFrame(gameLoop);
         }
 
         function spawnNewPlane(forceType = null, forceColor = null) {
@@ -1789,7 +1788,7 @@
                 x: -WORLD_BOUNDARY - radius,
                 y: Math.random() * WORLD_BOUNDARY * 2 - WORLD_BOUNDARY,
                 radius: radius,
-                speed: 0.5 + Math.random() * 0.5,
+                speed: 0.2 + Math.random() * 0.2, // Slower storm clouds
                 opacity: 0.6 + Math.random() * 0.2,
                 wind: { angle: (Math.random() - 0.5) * 0.5, speed: 0.2 + Math.random() * 0.3 },
                 parts: [],
@@ -1814,21 +1813,21 @@
             stormClouds.push(cloud);
         }
 
-        function updateStorms(deltaTime) {
+        function updateStorms(delta) {
             if (Math.random() < 0.001 && stormClouds.length < 3) {
                 createStormCloud();
                 playSound('thunder', null, '2n', 2);
             }
 
             stormClouds.forEach((cloud, index) => {
-                cloud.x += cloud.speed;
+                cloud.x += cloud.speed * delta;
                 if (cloud.x - cloud.radius > WORLD_BOUNDARY) {
                     stormClouds.splice(index, 1);
                 }
 
                 cloud.rain.forEach(p => {
-                    p.x += p.xs;
-                    p.y += p.ys;
+                    p.x += p.xs * delta;
+                    p.y += p.ys * delta;
                     if (p.x > cloud.x + cloud.radius || p.y > cloud.y + cloud.radius/2) {
                         p.x = cloud.x + (Math.random() - 0.5) * cloud.radius * 2;
                         p.y = cloud.y - cloud.radius/2 + (Math.random() * cloud.radius);
@@ -1837,11 +1836,11 @@
             });
         }
         
-        function updateAestheticClouds(deltaTime) {
+        function updateAestheticClouds(delta) {
              aestheticClouds.forEach(cloud => {
-                cloud.x += cloud.speed;
-                if (cloud.x > WORLD_BOUNDARY + cloud.radius * 4) {
-                    cloud.x = -WORLD_BOUNDARY - cloud.radius * 4;
+                cloud.x += cloud.speed * delta;
+                if (cloud.x - cloud.radius > WORLD_BOUNDARY) {
+                    cloud.x = -WORLD_BOUNDARY - cloud.radius;
                 }
             });
         }
@@ -1925,7 +1924,7 @@
                 `;
                 button.onclick = () => {
                     playSound('uiConfirm', 'E4');
-                    resetGame(i, true); // Preserve wallet when selecting a level
+                    resetGame(i, true);
                 };
                 levelGrid.appendChild(button);
             }
@@ -1983,7 +1982,7 @@
             if (settings.cargoPlanes) multiplier += 0.2;
             if (settings.emergencyPlanes) multiplier += 0.4;
             if (!settings.visualEffects) multiplier += 0.1;
-            if (settings.goArounds) multiplier -= 0.2; // Makes game easier
+            if (settings.goArounds) multiplier -= 0.2;
             if (settings.runwayClosures) multiplier += 0.4;
             if (settings.dayNightCycleToggle) multiplier += 0.2;
             if (settings.stormsToggle) multiplier += 0.4;
@@ -1997,7 +1996,7 @@
             }
 
             if (!settings.coins) multiplier += 0.2;
-            if (settings.godMode) multiplier = 0.1; // Lower multiplier for god mode
+            if (settings.godMode) multiplier = 0.1;
             return multiplier;
         }
 
@@ -2047,7 +2046,7 @@
             
             const numClouds = Math.min(10, 2 + level);
             for (let i = 0; i < numClouds; i++) {
-                const cloud = { x: Math.random() * WORLD_BOUNDARY * 2 - WORLD_BOUNDARY, y: Math.random() * WORLD_BOUNDARY * 2 - WORLD_BOUNDARY, radius: 30 + Math.random() * 20 + level * 5, opacity: 0.8, parts: [], speed: 0.2 + Math.random() * 0.2 };
+                const cloud = { x: Math.random() * WORLD_BOUNDARY * 2 - WORLD_BOUNDARY, y: Math.random() * WORLD_BOUNDARY * 2 - WORLD_BOUNDARY, radius: 30 + Math.random() * 20 + level * 5, opacity: 0.8, parts: [], speed: 0.1 + Math.random() * 0.1 };
                 const numParts = 5 + Math.floor(Math.random() * 5);
                 for (let j = 0; j < numParts; j++) {
                     cloud.parts.push({ x: (Math.random() - 0.5) * cloud.radius * 1.5, y: (Math.random() - 0.5) * cloud.radius * 0.8, radius: cloud.radius * (0.4 + Math.random() * 0.6) });
@@ -2059,7 +2058,7 @@
         function initializeStorms() {
             stormClouds = [];
             if (!settings.stormsToggle) return;
-            createStormCloud(); // Start with one storm cloud
+            createStormCloud();
         }
         
         function initializeCoins() {
@@ -2184,7 +2183,6 @@
             const worldPos = screenToWorld(getPointerPos(evt));
             let landingAssigned = false;
 
-            // Check for landing on an airport
             for (const airport of airports) {
                 if (isPointInRotatedRect(worldPos, airport)) {
                     if (airport.isClosed) {
@@ -2242,9 +2240,7 @@
             path = [];
         }
 
-        // --- Event Listener Setup ---
         document.addEventListener('DOMContentLoaded', () => {
-            // Assign DOM elements
             canvas = document.getElementById('gameCanvas');
             ctx = canvas.getContext('2d');
             gameContainer = document.getElementById('game-container');
@@ -2313,8 +2309,6 @@
             hangarSlotsIndicator = document.getElementById('hangarSlotsIndicator');
             sameColorCollisionToggle = document.getElementById('sameColorCollisionToggle');
 
-
-            // Setup event listeners
             window.addEventListener('resize', resizeCanvas);
             canvas.addEventListener('mousedown', handlePointerDown);
             canvas.addEventListener('mousemove', handlePointerMove);
@@ -2337,12 +2331,15 @@
             saveAndRestartButton.addEventListener('click', () => {
                 playSound('uiConfirm', 'E4');
                 settingsModal.classList.add('hidden');
-                resetGame(1, true); // Preserve wallet on settings change
+                resetGame(1, true);
             });
             closeSettingsButton.addEventListener('click', () => {
                 playSound('uiClick', 'A3');
                 settingsModal.classList.add('hidden');
                 isPaused = false;
+                if (!gameRunning) {
+                    requestAnimationFrame(gameLoop);
+                }
             });
             
             fullscreenButton.addEventListener('click', () => {
@@ -2367,6 +2364,7 @@
                     expandIcon.classList.remove('hidden');
                     shrinkIcon.classList.add('hidden');
                 }
+                resizeCanvas();
             });
 
             zoomInButton.addEventListener('click', () => {
@@ -2379,7 +2377,6 @@
                 camera.zoom = Math.max(0.4, camera.zoom - 0.2);
             });
             
-            // Settings listeners
             const settingsInputs = [
                 { el: planeSpeedSlider, key: 'speed', type: 'value' }, { el: spawnRateSlider, key: 'spawnRate', type: 'value' },
                 { el: fuelToggle, key: 'fuelSystem', type: 'checked' }, { el: windToggle, key: 'wind', type: 'checked' },
@@ -2401,7 +2398,7 @@
                     const eventType = input.type === 'checked' ? 'change' : 'input';
                     input.el.addEventListener(eventType, (e) => {
                         playSound('uiClick', 'A3');
-                        settings[input.key] = e.target[input.type];
+                        settings[input.key] = input.type === 'value' ? parseInt(e.target.value) : e.target.checked;
                         if (input.key === 'music') {
                             toggleMusic(settings.music);
                         }
@@ -2428,7 +2425,6 @@
                 });
             });
 
-            // Purchase button listeners
             purchasePlaneBtn.addEventListener('click', () => {
                 const cost = getHangarUpgradeCost();
                 if (score >= cost) {
@@ -2449,7 +2445,6 @@
                 }
             });
 
-            // --- Initial Start ---
             initializeFirebase();
         });
 
@@ -2494,6 +2489,9 @@
                     opacity: 1,
                     color: color
                 });
+            }
+            if (type === 'crash') {
+                effects.push({ type: 'groundFire', x, y, life: 300, particles: [] });
             }
             effects.push({ type, particles });
         }
