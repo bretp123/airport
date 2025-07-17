@@ -654,8 +654,7 @@
             let tip = message;
             if (!tip) {
                 const tips = [
-                    "Guide planes to their matching runways!",
-                    "Select a plane and press 'F' for manual control!"
+                    "Guide planes to their matching runways!"
                 ];
                 if (settings.goArounds) tips.push("Use the Go-Around button to avoid collisions!");
                 if (settings.runwayClosures) tips.push("Watch out for closed runways!");
@@ -1956,7 +1955,7 @@
 
             const numParts = 10 + Math.floor(Math.random() * 10);
             for (let j = 0; j < numParts; j++) {
-                cloud.parts.push({ x: (Math.random() - 0.5) * cloud.radius * 1.8, y: (Math.random() - 0.5) * cloud.radius * 0.8, radius: cloud.radius * (0.3 + Math.random() * 0.6) });
+                cloud.parts.push({ x: (Math.random() - 0.5) * cloud.radius * 1.8, y: (Math.random() - 0.5) * cloud.radius * 0.8, radius: cloud.radius * (0.4 + Math.random() * 0.6) });
             }
 
             const numRainDrops = 50;
@@ -2322,10 +2321,31 @@
         }
 
         // --- Event Handlers ---
+        // FIX: This function now correctly handles both mouse and touch events,
+        // including the 'touchend' event which requires using 'changedTouches'.
         function getPointerPos(evt) {
             const rect = canvas.getBoundingClientRect();
-            const clientX = evt.clientX || (evt.touches && evt.touches[0] ? evt.touches[0].clientX : 0);
-            const clientY = evt.clientY || (evt.touches && evt.touches[0] ? evt.touches[0].clientY : 0);
+            let clientX, clientY;
+
+            if (evt.type.startsWith('touch')) {
+                // For touchstart and touchmove, use the first touch point
+                if (evt.touches && evt.touches.length > 0) {
+                    clientX = evt.touches[0].clientX;
+                    clientY = evt.touches[0].clientY;
+                } 
+                // For touchend, the 'touches' list is empty. We need to use 'changedTouches'.
+                else if (evt.changedTouches && evt.changedTouches.length > 0) {
+                    clientX = evt.changedTouches[0].clientX;
+                    clientY = evt.changedTouches[0].clientY;
+                } else {
+                    return null; // No touch info available
+                }
+            } else {
+                // For mouse events
+                clientX = evt.clientX;
+                clientY = evt.clientY;
+            }
+            
             return { x: clientX - rect.left, y: clientY - rect.top };
         }
 
@@ -2339,7 +2359,9 @@
         function handlePointerDown(evt) {
             if (!audioInitialized) initializeAudio();
             if (!gameRunning || isPaused) return;
-            const worldPos = screenToWorld(getPointerPos(evt));
+            const screenPos = getPointerPos(evt);
+            if (!screenPos) return;
+            const worldPos = screenToWorld(screenPos);
             
             if(selectedPlane) {
                 selectedPlane.isSelected = false;
@@ -2360,7 +2382,9 @@
         function handlePointerMove(evt) {
             if (!selectedPlane || !gameRunning || isPaused) return;
             evt.preventDefault();
-            const worldPos = screenToWorld(getPointerPos(evt));
+            const screenPos = getPointerPos(evt);
+            if (!screenPos) return;
+            const worldPos = screenToWorld(screenPos);
             path.push(worldPos);
         }
         
@@ -2381,7 +2405,9 @@
         function handlePointerUp(evt) {
             if (!selectedPlane || !gameRunning || isPaused) return;
             
-            const worldPos = screenToWorld(getPointerPos(evt));
+            const screenPos = getPointerPos(evt);
+            if (!screenPos) return;
+            const worldPos = screenToWorld(screenPos);
             let landingAssigned = false;
 
             for (const airport of airports) {
