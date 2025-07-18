@@ -49,11 +49,20 @@
         <div id="inGameUI" class="absolute top-4 left-4 flex-col gap-2 z-10">
             <!-- Info Panel -->
             <div class="ui-panel p-3 rounded-lg shadow-md">
-                <div class="flex items-center justify-between gap-4">
+                <div class="flex items-center justify-between gap-2">
                     <div id="infoToggle" class="text-gray-800 cursor-pointer select-none p-1" title="Toggle Details">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                     </div>
-                    <div id="walletDisplay" class="text-lg font-bold text-green-700">$0</div>
+                    <div id="walletDisplay" class="text-lg font-bold text-green-700 mx-2">$0</div>
+                     <button id="zoomInButton" title="Zoom In" class="text-gray-600 hover:text-gray-900 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                    <button id="zoomOutButton" title="Zoom Out" class="text-gray-600 hover:text-gray-900 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                    <button id="restartGameButton" title="Restart Level" class="text-yellow-600 hover:text-red-600 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                    </button>
                 </div>
                 <div id="infoPanelDetails" class="hidden mt-2">
                     <div class="flex items-center gap-2 mb-2">
@@ -64,17 +73,8 @@
                         <button id="settingsButton" title="Settings" class="text-blue-600 hover:text-blue-800 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                         </button>
-                        <button id="zoomInButton" title="Zoom In" class="text-gray-600 hover:text-gray-900 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                        </button>
-                        <button id="zoomOutButton" title="Zoom Out" class="text-gray-600 hover:text-gray-900 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                        </button>
                         <button id="levelSelectButton" title="Select Level" class="text-green-600 hover:text-green-800 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                        </button>
-                        <button id="restartGameButton" title="Restart Level" class="text-yellow-600 hover:text-red-600 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                         </button>
                     </div>
                     <div class="mt-2 text-gray-700 text-sm space-y-1">
@@ -112,7 +112,7 @@
                 <span id="hangarSlotsIndicator" class="bg-green-200 text-green-800 text-sm font-bold px-3 py-2 rounded-full">1</span>
             </div>
             <button id="purchaseRunwayBtn" class="purchase-btn bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-600 transition-colors">Next Level ($1000)</button>
-            <button id="purchaseTowerBtn" class="purchase-btn bg-purple-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-purple-600 transition-colors">Tower Control (auto-land)</button>
+            <button id="purchaseTowerBtn" class="purchase-btn bg-purple-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-purple-600 transition-colors">Control Tower</button>
             <button id="purchaseGlideScopeBtn" class="purchase-btn bg-pink-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-pink-600 transition-colors hidden">Glide Scope</button>
         </div>
         
@@ -439,7 +439,7 @@
         let holdingPatternDirection = 1;
         let runwayClosureTriggerCount = -1;
         let runwayClosureHasHappenedThisLevel = false;
-        let camera = { x: 0, y: 0, zoom: 1 };
+        let camera = { x: 0, y: 0, zoom: 0.6 }; // Start more zoomed out
         let towerControlActive = false;
         let glideScopeActive = false;
         let radarSweepAngle = 0;
@@ -486,9 +486,9 @@
         // =================================================================================
         // Game Configuration Constants
         // =================================================================================
-        const PLANE_SIZE = 40;
-        const AIRPORT_WIDTH = 200;
-        const AIRPORT_HEIGHT = 50;
+        const PLANE_SIZE = 50; // Increased plane size
+        const AIRPORT_WIDTH = 240; // Increased runway width
+        const AIRPORT_HEIGHT = 60; // Increased runway height
         const COLLISION_RADIUS = PLANE_SIZE / 2.5;
         const GO_AROUND_RADIUS = COLLISION_RADIUS * 3;
         const LANDING_ZONE_PADDING = 15;
@@ -2037,7 +2037,7 @@
         }
 
         function getTowerControlCost() {
-            return Math.round((getNextLevelCost() * 0.7) / 50) * 50;
+            return Math.round((getNextLevelCost() * 0.5) / 50) * 50; // Changed to 50%
         }
 
         function getGlideScopeCost() {
@@ -2069,10 +2069,10 @@
             purchaseRunwayBtn.disabled = score < nextLevelCost;
             
             if (towerControlActive) {
-                 purchaseTowerBtn.textContent = 'Tower Control: Active';
+                 purchaseTowerBtn.textContent = 'Control Tower: Active';
                  purchaseTowerBtn.disabled = true;
             } else {
-                purchaseTowerBtn.textContent = `Tower Control ($${towerCost})`;
+                purchaseTowerBtn.textContent = `Control Tower ($${towerCost})`;
                 purchaseTowerBtn.disabled = score < towerCost;
             }
 
@@ -2321,27 +2321,22 @@
         }
 
         // --- Event Handlers ---
-        // FIX: This function now correctly handles both mouse and touch events,
-        // including the 'touchend' event which requires using 'changedTouches'.
         function getPointerPos(evt) {
             const rect = canvas.getBoundingClientRect();
             let clientX, clientY;
 
             if (evt.type.startsWith('touch')) {
-                // For touchstart and touchmove, use the first touch point
                 if (evt.touches && evt.touches.length > 0) {
                     clientX = evt.touches[0].clientX;
                     clientY = evt.touches[0].clientY;
                 } 
-                // For touchend, the 'touches' list is empty. We need to use 'changedTouches'.
                 else if (evt.changedTouches && evt.changedTouches.length > 0) {
                     clientX = evt.changedTouches[0].clientX;
                     clientY = evt.changedTouches[0].clientY;
                 } else {
-                    return null; // No touch info available
+                    return null;
                 }
             } else {
-                // For mouse events
                 clientX = evt.clientX;
                 clientY = evt.clientY;
             }
