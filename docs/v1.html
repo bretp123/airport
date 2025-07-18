@@ -55,7 +55,7 @@
                     </div>
                     <div id="walletDisplay" class="text-lg font-bold text-green-700 mx-2">$0</div>
                      <button id="zoomInButton" title="Zoom In" class="text-gray-600 hover:text-gray-900 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     </button>
                     <button id="zoomOutButton" title="Zoom Out" class="text-gray-600 hover:text-gray-900 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -90,10 +90,10 @@
 
         <div class="absolute top-4 right-4 flex gap-2">
              <div id="dayNightIndicator" class="hidden ui-panel p-2 rounded-full shadow-md flex items-center justify-center w-16 h-16 overflow-hidden">
-                <div class="relative w-full h-full">
-                    <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute top-1/2 left-1/2 text-yellow-500" style="transform: translate(-50%, 20px);"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-                    <svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute top-1/2 left-1/2 text-slate-400" style="transform: translate(-50%, -20px);"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                </div>
+                 <div class="relative w-full h-full">
+                     <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute top-1/2 left-1/2 text-yellow-500" style="transform: translate(-50%, 20px);"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                     <svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute top-1/2 left-1/2 text-slate-400" style="transform: translate(-50%, -20px);"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                 </div>
             </div>
             <div id="windIndicator" class="hidden ui-panel p-2 rounded-full shadow-md flex items-center justify-center w-16 h-16">
                 <svg id="windArrow" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 transition-transform duration-500"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
@@ -1478,7 +1478,7 @@
                             if ( (plane.orbitDirection > 0 && prevAngle < glideScopeAngle && currentAngle >= glideScopeAngle) ||
                                  (plane.orbitDirection < 0 && prevAngle > glideScopeAngle && currentAngle <= glideScopeAngle) ) {
                                 plane.isOrbiting = false;
-                                plane.path = [{ x: 0, y: TOWER_CONTROL_RADIUS - 10 }]; // FIX: Target inside the radius
+                                plane.path = [{ x: 0, y: TOWER_CONTROL_RADIUS / 2 }]; // Pulls the plane much further into the tower's range
                                 createNotification("Entering Glide Scope", plane.x, plane.y - 30, 'rgba(168, 85, 247, 0.9)');
                             }
                         }
@@ -1865,9 +1865,11 @@
 
             resizeCanvas();
             
+            level = startLevel; // Set level first to calculate runways
+            simultaneousPlanes = getNumRunwaysForLevel(level); // Set hangar slots based on runways
+
             if (!preserveWallet) {
                 score = 0;
-                simultaneousPlanes = 1;
             }
             
             if (settings.godMode) {
@@ -1880,7 +1882,6 @@
             notifications = [];
             stormClouds = [];
             aestheticClouds = [];
-            level = startLevel;
             planesLanded = 0;
             planesSpawnedThisLevel = 0;
             scorePopups = [];
@@ -2082,16 +2083,16 @@
             return Math.round((getNextLevelCost() * 0.6) / 50) * 50; // Changed to 60%
         }
 
+        function getHangarUpgradeCost() {
+            return 200 + (simultaneousPlanes - 1) * 300;
+        }
+
         function updateWalletDisplay() {
             if (walletEl) {
                 walletEl.textContent = `$${score}`;
                 walletDisplay.textContent = `$${score}`;
             }
             updatePurchaseButtons();
-        }
-
-        function getHangarUpgradeCost() {
-            return 200 + (simultaneousPlanes - 1) * 300;
         }
 
         function updatePurchaseButtons() {
@@ -2102,7 +2103,7 @@
 
             purchasePlaneBtn.textContent = `Hangar Slot +1 ($${planeCost})`;
             purchasePlaneBtn.disabled = score < planeCost;
-            
+
             purchaseRunwayBtn.textContent = `Next Level ($${nextLevelCost})`;
             purchaseRunwayBtn.disabled = score < nextLevelCost;
             
@@ -2122,7 +2123,6 @@
                 purchaseGlideScopeBtn.textContent = `Glide Scope ($${glideScopeCost})`;
                 purchaseGlideScopeBtn.disabled = score < glideScopeCost;
             }
-
 
             hangarSlotsIndicator.textContent = simultaneousPlanes;
         }
