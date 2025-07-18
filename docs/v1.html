@@ -38,6 +38,13 @@
             cursor: not-allowed;
             opacity: 0.7;
         }
+        @keyframes flash {
+            0%, 100% { background-color: #2563eb; color: white; } /* blue-600 */
+            50% { background-color: #16a34a; color: white; } /* green-600 */
+        }
+        .flashing-button {
+            animation: flash 1.5s infinite;
+        }
     </style>
 </head>
 <body class="bg-gray-900 flex items-center justify-center h-screen">
@@ -371,12 +378,20 @@
         </div>
         
         <div id="levelCompleteModal" class="hidden modal absolute inset-0 flex items-center justify-center z-20">
-            <div class="bg-white p-8 rounded-lg shadow-xl text-center">
+            <div class="bg-white p-8 rounded-lg shadow-xl text-center relative">
+                <button id="closeLevelCompleteButton" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
                 <h2 class="text-3xl font-bold text-green-500">Level Complete!</h2>
                 <p class="mt-2 text-gray-700">Get ready for Level <span id="nextLevel">2</span>.</p>
-                <button id="nextLevelButton" class="mt-6 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
-                    Start Next Level
-                </button>
+                <div class="mt-6 flex gap-4 justify-center">
+                    <button id="continuePlayingButton" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
+                        Continue Playing
+                    </button>
+                    <button id="nextLevelButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
+                        Next Level
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -404,7 +419,7 @@
             visualEffectsToggle, soundEffectsToggle, musicToggle, goAroundsToggle, runwayClosuresToggle, dayNightCycleToggle, stormsToggle,
             dayNightIndicator, sunIcon, moonIcon, walletDisplay, purchasePlaneBtn, purchaseRunwayBtn, godModeToggle,
             zoomInButton, zoomOutButton, hangarSlotsIndicator, sameColorCollisionToggle, differentColorCollisionToggle,
-            purchaseTowerBtn, purchaseGlideScopeBtn;
+            purchaseTowerBtn, purchaseGlideScopeBtn, continuePlayingButton, closeLevelCompleteButton;
         
         // =================================================================================
         // Game State Variables
@@ -446,6 +461,7 @@
         let towerControlActive = false;
         let glideScopeActive = false;
         let radarSweepAngle = 0;
+        let levelCompleteContinue = false;
         
         // =================================================================================
         // Audio State
@@ -1713,6 +1729,7 @@
             updateScorePopups(delta);
             updateNotifications(delta);
             updateWaterRipples(delta);
+            updatePurchaseButtons(); // Continuously update for flashing effect
 
             let gameOverReason = null;
 
@@ -1867,6 +1884,7 @@
             
             level = startLevel; // Set level first to calculate runways
             simultaneousPlanes = getNumRunwaysForLevel(level); // Set hangar slots based on runways
+            levelCompleteContinue = false;
 
             if (!preserveWallet) {
                 score = 0;
@@ -2084,7 +2102,7 @@
         }
 
         function getHangarUpgradeCost() {
-            return 200 + (simultaneousPlanes - 1) * 300;
+            return 200 + (simultaneousPlanes - getNumRunwaysForLevel(level)) * 300;
         }
 
         function updateWalletDisplay() {
@@ -2104,8 +2122,15 @@
             purchasePlaneBtn.textContent = `Hangar Slot +1 ($${planeCost})`;
             purchasePlaneBtn.disabled = score < planeCost;
 
-            purchaseRunwayBtn.textContent = `Next Level ($${nextLevelCost})`;
-            purchaseRunwayBtn.disabled = score < nextLevelCost;
+            if (levelCompleteContinue) {
+                purchaseRunwayBtn.textContent = 'Next Level ($0)';
+                purchaseRunwayBtn.disabled = false;
+                purchaseRunwayBtn.classList.add('flashing-button');
+            } else {
+                purchaseRunwayBtn.textContent = `Next Level ($${nextLevelCost})`;
+                purchaseRunwayBtn.disabled = score < nextLevelCost;
+                purchaseRunwayBtn.classList.remove('flashing-button');
+            }
             
             if (towerControlActive) {
                  purchaseTowerBtn.textContent = 'Control Tower: Active';
@@ -2515,6 +2540,8 @@
             levelCompleteModal = document.getElementById('levelCompleteModal');
             nextLevelEl = document.getElementById('nextLevel');
             nextLevelButton = document.getElementById('nextLevelButton');
+            continuePlayingButton = document.getElementById('continuePlayingButton');
+            closeLevelCompleteButton = document.getElementById('closeLevelCompleteButton');
             levelSelectModal = document.getElementById('levelSelectModal');
             levelSelectButton = document.getElementById('levelSelectButton');
             closeLevelSelectButton = document.getElementById('closeLevelSelectButton');
@@ -2582,10 +2609,19 @@
             restartModalButton.addEventListener('click', () => { playSound('uiConfirm', 'E4'); resetGame(1, false); });
             restartGameButton.addEventListener('click', () => { playSound('uiClick', 'C4'); resetGame(level, true); });
             restartLevelButton.addEventListener('click', () => { playSound('uiClick', 'C4'); resetGame(level, true); });
+            
+            function continueCurrentLevel() {
+                playSound('uiClick', 'C4');
+                levelCompleteModal.classList.add('hidden');
+                resumeGame();
+            }
+
+            continuePlayingButton.addEventListener('click', continueCurrentLevel);
+            closeLevelCompleteButton.addEventListener('click', continueCurrentLevel);
+
             nextLevelButton.addEventListener('click', () => {
                 playSound('uiConfirm', 'E4');
-                level++;
-                resetGame(level, true);
+                levelUp();
             });
             levelSelectButton.addEventListener('click', openLevelSelect);
             closeLevelSelectButton.addEventListener('click', closeLevelSelect);
@@ -2696,6 +2732,11 @@
             });
 
             purchaseRunwayBtn.addEventListener('click', () => {
+                if (levelCompleteContinue) {
+                    levelUp();
+                    playSound('purchase', 'C5', '4n');
+                    return;
+                }
                 const cost = getNextLevelCost();
                 if (score >= cost) {
                     score -= cost;
@@ -2735,15 +2776,17 @@
         function checkLevelEnd() {
             updatePlanesLeft();
             const totalForLevel = getPlanesToLandForLevel(level);
-            if (planesLanded >= totalForLevel) {
+            if (planesLanded >= totalForLevel && !levelCompleteContinue) {
                 gameRunning = false;
                 pauseGame();
+                levelCompleteContinue = true;
                 if (level >= highestLevel) {
                     highestLevel = level + 1;
                     saveGameState(highestLevel);
                 }
                 levelCompleteModal.classList.remove('hidden');
                 nextLevelEl.textContent = level + 1;
+                updatePurchaseButtons();
             }
         }
 
