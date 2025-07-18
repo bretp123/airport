@@ -101,8 +101,11 @@
         </div>
 
         <!-- Tip Banner -->
-        <div id="tipBanner" class="absolute bottom-4 left-1/2 -translate-x-1/2 ui-panel px-4 py-2 rounded-lg text-gray-800 font-semibold text-center z-20">
-            Tip: Guide planes to their matching runways!
+        <div id="tipBanner" class="absolute top-[15%] left-1/2 -translate-x-1/2 ui-panel px-8 py-2 rounded-lg text-gray-800 font-semibold text-center z-20 hidden cursor-pointer">
+            <span id="tipBannerText"></span>
+            <button id="closeTipBtn" class="absolute top-1 right-1 text-gray-500 hover:text-gray-800">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
         </div>
 
         <!-- Purchase Buttons -->
@@ -392,7 +395,7 @@
         let canvas, ctx, gameContainer, inGameUI, walletEl, levelEl, planesLeftEl, timerEl,
             scoreMultiplierLabel, gameOverModal, finalBalanceEl, gameOverMessage, restartModalButton,
             restartLevelButton, restartGameButton, levelCompleteModal, nextLevelEl, nextLevelButton,
-            levelSelectModal, levelSelectButton, closeLevelSelectButton, levelGrid, tipBanner,
+            levelSelectModal, levelSelectButton, closeLevelSelectButton, levelGrid, tipBanner, tipBannerText, closeTipBtn,
             settingsModal, settingsButton, saveAndRestartButton, closeSettingsButton, planeSpeedSlider, spawnRateSlider,
             difficultyLabel, fuelToggle, windToggle, cloudsToggle, windIndicator, windArrow,
             fullscreenButton, expandIcon, shrinkIcon, holdingPatternSlider, holdingPatternLabel, 
@@ -653,19 +656,29 @@
         function updateTipBanner(message = null) {
             let tip = message;
             if (!tip) {
-                const tips = [
-                    "Guide planes to their matching runways!"
+                const baseTips = [
+                    "Guide planes to their matching runways!",
+                    "You can buy more hangars to land more planes simultaneously.",
+                    "Larger planes are slower but give more points!",
                 ];
-                if (settings.goArounds) tips.push("Use the Go-Around button to avoid collisions!");
-                if (settings.runwayClosures) tips.push("Watch out for closed runways!");
-                if (settings.stormsToggle) tips.push("Be prepared for sudden weather changes!");
-                if (settings.emergencyPlanes) tips.push("Emergency planes cannot enter a holding pattern!");
-                tip = tips[Math.floor(Math.random() * tips.length)];
+                
+                const featureTips = [];
+                if (towerControlActive) featureTips.push("When in range of the Control Tower, planes land automatically.");
+                if (glideScopeActive) featureTips.push("The Glide Scope pulls planes from the holding pattern to the tower.");
+                if (settings.vipPlanes) featureTips.push("VIP planes are fast! Prioritize them for a score bonus.");
+                if (settings.emergencyPlanes) featureTips.push("Emergency planes must land quickly and cannot enter a holding pattern.");
+                if (settings.stormsToggle) featureTips.push("Watch out for storms! They can push planes off course.");
+                if (settings.runwayClosures) featureTips.push("Watch out for closed runways!");
+                if (settings.goArounds) featureTips.push("Automatic Go-Arounds help prevent near-misses.");
+
+                const allTips = [...baseTips, ...featureTips];
+                
+                tip = allTips[Math.floor(Math.random() * allTips.length)];
             }
-            tipBanner.textContent = `Tip: ${tip}`;
-            tipBanner.style.display = 'block';
+            tipBannerText.textContent = `Tip: ${tip}`;
+            tipBanner.classList.remove('hidden');
             setTimeout(() => {
-                tipBanner.style.display = 'none';
+                tipBanner.classList.add('hidden');
             }, 5000);
         }
 
@@ -773,6 +786,7 @@
                 collisionImmunityTimer: 0,
                 collisionRadius: (PLANE_SIZE / 2.5) * scaleFactor,
                 prevOrbitAngle: 0, // For glide scope detection
+                isInStorm: false,
             };
             
             return plane;
@@ -1152,7 +1166,7 @@
             if (!settings.stormsToggle) return;
             stormClouds.forEach(cloud => {
                 ctx.beginPath();
-                ctx.fillStyle = `rgba(100, 100, 120, ${cloud.opacity})`;
+                ctx.fillStyle = `rgba(80, 80, 100, 0.9)`; // Made clouds less transparent
                 for(const part of cloud.parts) {
                     ctx.moveTo(cloud.x + part.x, cloud.y + part.y);
                     ctx.arc(cloud.x + part.x, cloud.y + part.y, part.radius, 0, Math.PI * 2);
@@ -1360,12 +1374,32 @@
                     plane.y += windSpeed * Math.sin(wind.angle) * delta;
                 }
 
+                let inStorm = false;
                 stormClouds.forEach(cloud => {
                     if (distance(plane, cloud) < cloud.radius) {
+                        inStorm = true;
+                        if (!plane.isInStorm) {
+                            plane.isInStorm = true;
+                            plane.path = [];
+                            plane.isLanding = false;
+                            plane.isOrbiting = false;
+                            createNotification("Mayday! Lost heading!", plane.x, plane.y - 30, 'rgba(239, 68, 68, 0.9)');
+                        }
                         plane.x += cloud.wind.speed * Math.cos(cloud.wind.angle) * delta;
                         plane.y += cloud.wind.speed * Math.sin(cloud.wind.angle) * delta;
                     }
                 });
+
+                if (inStorm) {
+                    plane.opacity = Math.max(0, plane.opacity - 0.1 * delta);
+                } else {
+                    if (plane.isInStorm) {
+                        plane.isInStorm = false;
+                        plane.angle = Math.random() * Math.PI * 2;
+                    }
+                    plane.opacity = Math.min(1, plane.opacity + 0.1 * delta);
+                }
+
 
                 if (plane.path.length > 0) {
                     if(plane.isOrbiting) {
@@ -1444,7 +1478,7 @@
                             if ( (plane.orbitDirection > 0 && prevAngle < glideScopeAngle && currentAngle >= glideScopeAngle) ||
                                  (plane.orbitDirection < 0 && prevAngle > glideScopeAngle && currentAngle <= glideScopeAngle) ) {
                                 plane.isOrbiting = false;
-                                plane.path = [{ x: 0, y: TOWER_CONTROL_RADIUS }];
+                                plane.path = [{ x: 0, y: TOWER_CONTROL_RADIUS - 10 }]; // FIX: Target inside the radius
                                 createNotification("Entering Glide Scope", plane.x, plane.y - 30, 'rgba(168, 85, 247, 0.9)');
                             }
                         }
@@ -1772,14 +1806,18 @@
             airports.forEach(drawAirport);
             drawCoins();
             planes.forEach(drawPlaneTrail);
-            drawEffects(); 
+            
+            // Draw storms on top of trails but behind planes
+            if (settings.stormsToggle) {
+                drawStorms();
+            }
+
             planes.forEach(drawPlane);
             planes.forEach(plane => { drawPath(plane); });
             drawSelectionPath();
             drawAestheticClouds();
-            if (settings.stormsToggle) {
-                drawStorms();
-            }
+            
+            drawEffects(); 
             drawScorePopups();
             drawNotifications();
             drawLevelAnnouncement();
@@ -2041,7 +2079,7 @@
         }
 
         function getGlideScopeCost() {
-            return Math.round((getNextLevelCost() * 0.9) / 50) * 50;
+            return Math.round((getNextLevelCost() * 0.6) / 50) * 50; // Changed to 60%
         }
 
         function updateWalletDisplay() {
@@ -2482,6 +2520,8 @@
             closeLevelSelectButton = document.getElementById('closeLevelSelectButton');
             levelGrid = document.getElementById('levelGrid');
             tipBanner = document.getElementById('tipBanner');
+            tipBannerText = document.getElementById('tipBannerText');
+            closeTipBtn = document.getElementById('closeTipBtn');
             settingsModal = document.getElementById('settingsModal');
             settingsButton = document.getElementById('settingsButton');
             saveAndRestartButton = document.getElementById('saveAndRestartButton');
@@ -2536,6 +2576,8 @@
             canvas.addEventListener('touchstart', handlePointerDown, {passive: false});
             canvas.addEventListener('touchmove', handlePointerMove, {passive: false});
             canvas.addEventListener('touchend', handlePointerUp);
+
+            tipBanner.addEventListener('click', () => tipBanner.classList.add('hidden'));
 
             restartModalButton.addEventListener('click', () => { playSound('uiConfirm', 'E4'); resetGame(1, false); });
             restartGameButton.addEventListener('click', () => { playSound('uiClick', 'C4'); resetGame(level, true); });
@@ -2671,6 +2713,7 @@
                     updateWalletDisplay();
                     updateActiveFeaturesDisplay();
                     playSound('purchase', 'A4', '8n');
+                    updateTipBanner("When in range of the Control Tower, planes land automatically.");
                 }
             });
 
@@ -2682,6 +2725,7 @@
                     updateWalletDisplay();
                     updateActiveFeaturesDisplay();
                     playSound('purchase', 'B4', '8n');
+                    updateTipBanner("The Glide Scope pulls planes from the holding pattern to the tower.");
                 }
             });
 
