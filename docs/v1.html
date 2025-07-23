@@ -67,6 +67,9 @@
                     <button id="zoomOutButton" title="Zoom Out" class="text-gray-600 hover:text-gray-900 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     </button>
+                    <button id="tipButton" title="Next Tip" class="text-sky-600 hover:text-sky-800 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    </button>
                     <button id="restartGameButton" title="Restart Level" class="text-yellow-600 hover:text-red-600 p-1 rounded-md bg-gray-500/20 hover:bg-gray-500/40">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                     </button>
@@ -117,13 +120,13 @@
 
         <!-- Purchase Buttons -->
         <div id="purchaseControls" class="absolute bottom-4 left-4 flex flex-col gap-2 z-20">
-             <div class="flex items-center gap-2">
-                <button id="purchasePlaneBtn" class="purchase-btn bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-green-600 transition-colors">Hangar Slot +1</button>
-                <span id="hangarSlotsIndicator" class="bg-green-200 text-green-800 text-sm font-bold px-3 py-2 rounded-full">1</span>
+            <div class="flex items-center gap-2">
+                <button id="purchasePlaneBtn" class="purchase-btn bg-green-500 text-white text-sm font-semibold py-1.5 px-3 rounded-lg shadow-md hover:bg-green-600 transition-colors">Hangar Slot +1</button>
+                <span id="hangarSlotsIndicator" class="bg-green-200 text-green-800 text-sm font-bold px-3 py-1.5 rounded-full">1</span>
             </div>
-            <button id="purchaseRunwayBtn" class="purchase-btn bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-600 transition-colors">Next Level ($1000)</button>
-            <button id="purchaseTowerBtn" class="purchase-btn bg-purple-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-purple-600 transition-colors">Control Tower</button>
-            <button id="purchaseGlideScopeBtn" class="purchase-btn bg-pink-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-pink-600 transition-colors hidden">Glide Scope</button>
+            <button id="purchaseTowerBtn" class="purchase-btn bg-purple-500 text-white text-sm font-semibold py-1.5 px-3 rounded-lg shadow-md hover:bg-purple-600 transition-colors">Control Tower</button>
+            <button id="purchaseGlideScopeBtn" class="purchase-btn bg-pink-500 text-white text-sm font-semibold py-1.5 px-3 rounded-lg shadow-md hover:bg-pink-600 transition-colors">Glide Scope</button>
+            <button id="purchaseRunwayBtn" class="purchase-btn bg-blue-500 text-white text-sm font-semibold py-1.5 px-3 rounded-lg shadow-md hover:bg-blue-600 transition-colors">Level +1</button>
         </div>
         
         <!-- Modals -->
@@ -419,7 +422,7 @@
             visualEffectsToggle, soundEffectsToggle, musicToggle, goAroundsToggle, runwayClosuresToggle, dayNightCycleToggle, stormsToggle,
             dayNightIndicator, sunIcon, moonIcon, walletDisplay, purchasePlaneBtn, purchaseRunwayBtn, godModeToggle,
             zoomInButton, zoomOutButton, hangarSlotsIndicator, sameColorCollisionToggle, differentColorCollisionToggle,
-            purchaseTowerBtn, purchaseGlideScopeBtn, continuePlayingButton, closeLevelCompleteButton;
+            purchaseTowerBtn, purchaseGlideScopeBtn, continuePlayingButton, closeLevelCompleteButton, tipButton;
         
         // =================================================================================
         // Game State Variables
@@ -454,7 +457,6 @@
         let lastFrameTime;
         let dayNightCycle = { time: 0, duration: 240000 }; // 4 minutes for a full cycle
         let runwayClosure = { airportId: null, timer: 0 };
-        let holdingPatternDirection = 1;
         let runwayClosureTriggerCount = -1;
         let runwayClosureHasHappenedThisLevel = false;
         let camera = { x: 0, y: 0, zoom: 0.6 }; // Start more zoomed out
@@ -462,6 +464,7 @@
         let glideScopeActive = false;
         let radarSweepAngle = 0;
         let levelCompleteContinue = false;
+        let tipCounter = 0;
         
         // =================================================================================
         // Audio State
@@ -671,31 +674,43 @@
 
         function updateTipBanner(message = null) {
             let tip = message;
-            if (!tip) {
-                const baseTips = [
-                    "Guide planes to their matching runways!",
-                    "You can buy more hangars to land more planes simultaneously.",
-                    "Larger planes are slower but give more points!",
-                ];
-                
-                const featureTips = [];
-                if (towerControlActive) featureTips.push("When in range of the Control Tower, planes land automatically.");
-                if (glideScopeActive) featureTips.push("The Glide Scope pulls planes from the holding pattern to the tower.");
-                if (settings.vipPlanes) featureTips.push("VIP planes are fast! Prioritize them for a score bonus.");
-                if (settings.emergencyPlanes) featureTips.push("Emergency planes must land quickly and cannot enter a holding pattern.");
-                if (settings.stormsToggle) featureTips.push("Watch out for storms! They can push planes off course.");
-                if (settings.runwayClosures) featureTips.push("Watch out for closed runways!");
-                if (settings.goArounds) featureTips.push("Automatic Go-Arounds help prevent near-misses.");
 
-                const allTips = [...baseTips, ...featureTips];
-                
-                tip = allTips[Math.floor(Math.random() * allTips.length)];
+            const tutorialTips = [
+                "Drag planes to their matching runway to land.",
+                "Buy a Control Tower & Glidescope for automatic landings."
+            ];
+
+            if (!tip) {
+                if (tipCounter < tutorialTips.length) {
+                    tip = tutorialTips[tipCounter];
+                } else {
+                    const baseTips = [
+                        "You can buy more hangars to land more planes simultaneously.",
+                        "Larger planes are slower but give more points!",
+                    ];
+                    
+                    const featureTips = [];
+                    if (towerControlActive) featureTips.push("When in range of the Control Tower, planes land automatically.");
+                    if (glideScopeActive) featureTips.push("The Glide Scope pulls planes from the holding pattern to the tower.");
+                    if (settings.vipPlanes) featureTips.push("VIP planes are fast! Prioritize them for a score bonus.");
+                    if (settings.emergencyPlanes) featureTips.push("Emergency planes must land quickly and cannot enter a holding pattern.");
+                    if (settings.stormsToggle) featureTips.push("Watch out for storms! They can push planes off course.");
+                    if (settings.runwayClosures) featureTips.push("Watch out for closed runways!");
+                    if (settings.goArounds) featureTips.push("Automatic Go-Arounds help prevent near-misses.");
+
+                    const allTips = [...baseTips, ...featureTips];
+                    
+                    tip = allTips[Math.floor(Math.random() * allTips.length)];
+                }
             }
+            
             tipBannerText.textContent = `Tip: ${tip}`;
             tipBanner.classList.remove('hidden');
             setTimeout(() => {
                 tipBanner.classList.add('hidden');
             }, 5000);
+
+            tipCounter++; // Increment after showing a tip
         }
 
         function createNotification(text, x, y, color = 'rgba(255, 255, 255, 0.9)') {
@@ -1511,9 +1526,10 @@
                             if (sameColorOrbitingPlanes.length < holdingLimit && distToCenter < HOLDING_PATTERN_RADIUS) {
                                 plane.isOrbiting = true;
                                 plane.orbitRadius = distToCenter;
+                                if (plane.orbitRadius < 50) plane.orbitRadius = 50;
                                 plane.orbitAngle = Math.atan2(plane.y - centerY, plane.x - centerX);
                                 plane.prevOrbitAngle = plane.orbitAngle;
-                                plane.orbitDirection = holdingPatternDirection;
+                                plane.orbitDirection = getShortestOrbitDirection(plane.orbitAngle);
                                 createNotification("Entered holding pattern", plane.x, plane.y - 30);
                             }
                         }
@@ -1817,10 +1833,10 @@
             drawBackground();
             drawWaterRipples();
             drawTowerAndRadar();
-            drawGlideScope();
             drawWind();
             drawHoldingPattern();
             airports.forEach(drawAirport);
+            drawGlideScope();
             drawCoins();
             planes.forEach(drawPlaneTrail);
             
@@ -1888,6 +1904,7 @@
 
             if (!preserveWallet) {
                 score = 0;
+                tipCounter = 0;
             }
             
             if (settings.godMode) {
@@ -1919,7 +1936,6 @@
             } else {
                 runwayClosureTriggerCount = -1;
             }
-            holdingPatternDirection = (Math.random() < 0.5) ? 1 : -1;
             timeSinceLastGoAround = 60000;
             
             updateWalletDisplay();
@@ -2123,11 +2139,11 @@
             purchasePlaneBtn.disabled = score < planeCost;
 
             if (levelCompleteContinue) {
-                purchaseRunwayBtn.textContent = 'Next Level ($0)';
+                purchaseRunwayBtn.textContent = 'Level +1 ($0)';
                 purchaseRunwayBtn.disabled = false;
                 purchaseRunwayBtn.classList.add('flashing-button');
             } else {
-                purchaseRunwayBtn.textContent = `Next Level ($${nextLevelCost})`;
+                purchaseRunwayBtn.textContent = `Level +1 ($${nextLevelCost})`;
                 purchaseRunwayBtn.disabled = score < nextLevelCost;
                 purchaseRunwayBtn.classList.remove('flashing-button');
             }
@@ -2139,14 +2155,13 @@
                 purchaseTowerBtn.textContent = `Control Tower ($${towerCost})`;
                 purchaseTowerBtn.disabled = score < towerCost;
             }
-
-            purchaseGlideScopeBtn.classList.toggle('hidden', !towerControlActive);
+            
             if (glideScopeActive) {
                 purchaseGlideScopeBtn.textContent = 'Glide Scope: Active';
                 purchaseGlideScopeBtn.disabled = true;
             } else {
                 purchaseGlideScopeBtn.textContent = `Glide Scope ($${glideScopeCost})`;
-                purchaseGlideScopeBtn.disabled = score < glideScopeCost;
+                purchaseGlideScopeBtn.disabled = !towerControlActive || score < glideScopeCost;
             }
 
             hangarSlotsIndicator.textContent = simultaneousPlanes;
@@ -2506,9 +2521,10 @@
                     
                     selectedPlane.isOrbiting = true;
                     selectedPlane.orbitRadius = distance(worldPos, {x: 0, y: 0});
+                    if (selectedPlane.orbitRadius < 50) selectedPlane.orbitRadius = 50;
                     selectedPlane.orbitAngle = Math.atan2(worldPos.y, worldPos.x);
                     selectedPlane.prevOrbitAngle = selectedPlane.orbitAngle;
-                    selectedPlane.orbitDirection = holdingPatternDirection;
+                    selectedPlane.orbitDirection = getShortestOrbitDirection(selectedPlane.orbitAngle);
                     landingAssigned = true; // Set to true to prevent path assignment below
                     createNotification("Entered holding pattern", selectedPlane.x, selectedPlane.y - 30);
                     selectedPlane.collisionImmunityTimer = 2000;
@@ -2522,6 +2538,11 @@
             }
             selectedPlane = null;
             path = [];
+        }
+
+        function getShortestOrbitDirection(entryAngle) {
+            const glideScopeAngle = Math.PI / 2;
+            return Math.sin(glideScopeAngle - entryAngle) >= 0 ? 1 : -1;
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -2599,6 +2620,7 @@
             hangarSlotsIndicator = document.getElementById('hangarSlotsIndicator');
             sameColorCollisionToggle = document.getElementById('sameColorCollisionToggle');
             differentColorCollisionToggle = document.getElementById('differentColorCollisionToggle');
+            tipButton = document.getElementById('tipButton');
 
             window.addEventListener('resize', resizeCanvas);
             canvas.addEventListener('mousedown', handlePointerDown);
@@ -2772,6 +2794,11 @@
                     playSound('purchase', 'B4', '8n');
                     updateTipBanner("The Glide Scope pulls planes from the holding pattern to the tower.");
                 }
+            });
+
+            tipButton.addEventListener('click', () => {
+                playSound('uiClick', 'D4');
+                updateTipBanner();
             });
 
             initializeFirebase();
