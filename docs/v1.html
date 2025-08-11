@@ -45,6 +45,15 @@
         .flashing-button {
             animation: flash 1.5s infinite;
         }
+        .mode-select-btn.active {
+            background-color: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
+        .settings-tab-container.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body class="bg-gray-900">
@@ -132,210 +141,227 @@
         <!-- Modals -->
         <div id="settingsModal" class="hidden modal absolute inset-0 flex items-center justify-center z-30">
                 <div class="bg-white p-8 rounded-lg shadow-xl max-w-lg w-full">
-                    <h2 class="text-3xl font-bold text-gray-800 mb-4 text-center">Game Designer</h2>
+                    <h2 class="text-3xl font-bold text-gray-800 mb-4 text-center">Game Settings</h2>
                     
                     <div class="border-b border-gray-200 mb-4">
                         <nav class="-mb-px flex space-x-4" aria-label="Tabs">
-                            <button class="tab-button active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="difficulty">Difficulty</button>
+                            <button class="tab-button active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="mode">Game Mode</button>
+                            <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="difficulty">Difficulty</button>
                             <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="features">Gameplay</button>
                             <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="planes">Plane Types</button>
                             <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="effects">Effects</button>
                         </nav>
                     </div>
 
-                    <div id="difficultyContent" class="tab-content">
-                        <div class="space-y-4 text-left">
-                            <div>
-                                <label for="planeSpeedSlider" class="block text-sm font-medium text-gray-700">Plane Speed</label>
-                                <input id="planeSpeedSlider" type="range" min="1" max="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    <div id="modeContent" class="tab-content">
+                        <p class="text-sm text-gray-600 mb-4">Select a game mode. Switching modes will restart the game.</p>
+                        <div class="flex gap-4">
+                            <button id="campaignModeBtn" data-mode="campaign" class="mode-select-btn w-1/2 border-2 border-gray-300 p-4 rounded-lg text-center hover:border-indigo-500 transition">
+                                <h3 class="font-bold text-lg">Campaign</h3>
+                                <p class="text-xs text-gray-500">Play through levels with increasing difficulty.</p>
+                            </button>
+                            <button id="designerModeBtn" data-mode="designer" class="mode-select-btn w-1/2 border-2 border-gray-300 p-4 rounded-lg text-center hover:border-indigo-500 transition">
+                                <h3 class="font-bold text-lg">Game Designer</h3>
+                                <p class="text-xs text-gray-500">Customize all aspects of the game.</p>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="settingsTabContainer">
+                        <div id="difficultyContent" class="tab-content hidden">
+                            <div class="space-y-4 text-left">
+                                <div>
+                                    <label for="planeSpeedSlider" class="block text-sm font-medium text-gray-700">Plane Speed</label>
+                                    <input id="planeSpeedSlider" type="range" min="1" max="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                </div>
+                                <div>
+                                    <label for="spawnRateSlider" class="block text-sm font-medium text-gray-700">Spawn Rate (Faster &rarr;)</label>
+                                    <input id="spawnRateSlider" type="range" min="1" max="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                </div>
                             </div>
-                            <div>
-                                <label for="spawnRateSlider" class="block text-sm font-medium text-gray-700">Spawn Rate (Faster &rarr;)</label>
-                                <input id="spawnRateSlider" type="range" min="1" max="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+
+                        <div id="featuresContent" class="tab-content hidden">
+                            <div class="grid grid-cols-2 gap-4 text-left">
+                                <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="fuelToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="fuelToggle" class="font-medium text-gray-700">Fuel System</label>
+                                    </div>
+                                </div>
+                                <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="windToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="windToggle" class="font-medium text-gray-700">Global Wind</label>
+                                    </div>
+                                </div>
+                                <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="cloudsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="cloudsToggle" class="font-medium text-gray-700">Aesthetic Clouds</label>
+                                    </div>
+                                </div>
+                                <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="coinsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="coinsToggle" class="font-medium text-gray-700">Coins</label>
+                                    </div>
+                                </div>
+                                <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="goAroundsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="goAroundsToggle" class="font-medium text-gray-700">Automatic Go-Arounds</label>
+                                        <p class="text-gray-500 text-xs">Planes avoid near-collisions.</p>
+                                    </div>
+                                </div>
+                                 <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="runwayClosuresToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="runwayClosuresToggle" class="font-medium text-gray-700">Runway Closures</label>
+                                    </div>
+                                </div>
+                                <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="dayNightCycleToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="dayNightCycleToggle" class="font-medium text-gray-700">Day/Night Cycle</label>
+                                    </div>
+                                </div>
+                                 <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="stormsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="stormsToggle" class="font-medium text-gray-700">Storms</label>
+                                        <p class="text-gray-500 text-xs">Localized rain and wind.</p>
+                                    </div>
+                                </div>
+                                <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="sameColorCollisionToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="sameColorCollisionToggle" class="font-medium text-gray-700">Same Color Collisions</label>
+                                    </div>
+                                </div>
+                                <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="differentColorCollisionToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="differentColorCollisionToggle" class="font-medium text-gray-700">Different Color Collisions</label>
+                                    </div>
+                                </div>
+                                <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="realisticLandingToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="realisticLandingToggle" class="font-medium text-gray-700">Realistic Landing</label>
+                                        <p class="text-gray-500 text-xs">Approach from front/back.</p>
+                                    </div>
+                                </div>
+                                <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="godModeToggle" type="checkbox" class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="godModeToggle" class="font-medium text-gray-700">God Mode ($1M)</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <label for="holdingPatternSlider" class="block text-sm font-medium text-gray-700">Holding Pattern Limit (per color): <span id="holdingPatternLabel">1</span></label>
+                                <input id="holdingPatternSlider" type="range" min="0" max="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                <p class="text-xs text-gray-500">0 = Off, 5 = Unlimited</p>
+                            </div>
+                        </div>
+
+                        <div id="planesContent" class="tab-content hidden">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-left">
+                                <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="planeSizesToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="planeSizesToggle" class="font-medium text-gray-700">Different Plane Sizes</label>
+                                        <p class="text-gray-500 text-xs">Small, medium, & large planes.</p>
+                                    </div>
+                                </div>
+                                 <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="vipToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="vipToggle" class="font-medium text-gray-700">VIP Planes</label>
+                                        <p class="text-gray-500 text-xs">Fast, high-value (purple).</p>
+                                    </div>
+                                </div>
+                                 <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="cargoToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="cargoToggle" class="font-medium text-gray-700">Cargo Planes</label>
+                                        <p class="text-gray-500 text-xs">Slow, valuable (green).</p>
+                                    </div>
+                                </div>
+                                 <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="emergencyToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="emergencyToggle" class="font-medium text-gray-700">Emergency Planes</label>
+                                        <p class="text-gray-500 text-xs">Urgent, high-risk (red).</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="effectsContent" class="tab-content hidden">
+                             <div class="grid grid-cols-2 gap-4 text-left">
+                                <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="visualEffectsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="visualEffectsToggle" class="font-medium text-gray-700">Visual FX</label>
+                                    </div>
+                                </div>
+                                <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="soundEffectsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="soundEffectsToggle" class="font-medium text-gray-700">Sound FX</label>
+                                    </div>
+                                </div>
+                                 <div class="relative flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input id="musicToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="musicToggle" class="font-medium text-gray-700">Music</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div id="featuresContent" class="tab-content hidden">
-                        <div class="grid grid-cols-2 gap-4 text-left">
-                            <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="fuelToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="fuelToggle" class="font-medium text-gray-700">Fuel System</label>
-                                </div>
-                            </div>
-                            <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="windToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="windToggle" class="font-medium text-gray-700">Global Wind</label>
-                                </div>
-                            </div>
-                            <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="cloudsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="cloudsToggle" class="font-medium text-gray-700">Aesthetic Clouds</label>
-                                </div>
-                            </div>
-                            <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="coinsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="coinsToggle" class="font-medium text-gray-700">Coins</label>
-                                </div>
-                            </div>
-                            <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="goAroundsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="goAroundsToggle" class="font-medium text-gray-700">Automatic Go-Arounds</label>
-                                    <p class="text-gray-500 text-xs">Planes avoid near-collisions.</p>
-                                </div>
-                            </div>
-                             <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="runwayClosuresToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="runwayClosuresToggle" class="font-medium text-gray-700">Runway Closures</label>
-                                </div>
-                            </div>
-                            <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="dayNightCycleToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="dayNightCycleToggle" class="font-medium text-gray-700">Day/Night Cycle</label>
-                                </div>
-                            </div>
-                             <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="stormsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="stormsToggle" class="font-medium text-gray-700">Storms</label>
-                                    <p class="text-gray-500 text-xs">Localized rain and wind.</p>
-                                </div>
-                            </div>
-                            <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="sameColorCollisionToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="sameColorCollisionToggle" class="font-medium text-gray-700">Same Color Collisions</label>
-                                </div>
-                            </div>
-                            <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="differentColorCollisionToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="differentColorCollisionToggle" class="font-medium text-gray-700">Different Color Collisions</label>
-                                </div>
-                            </div>
-                            <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="realisticLandingToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="realisticLandingToggle" class="font-medium text-gray-700">Realistic Landing</label>
-                                    <p class="text-gray-500 text-xs">Approach from front/back.</p>
-                                </div>
-                            </div>
-                            <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="godModeToggle" type="checkbox" class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="godModeToggle" class="font-medium text-gray-700">God Mode ($1M)</label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mt-4">
-                            <label for="holdingPatternSlider" class="block text-sm font-medium text-gray-700">Holding Pattern Limit (per color): <span id="holdingPatternLabel">1</span></label>
-                            <input id="holdingPatternSlider" type="range" min="0" max="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                            <p class="text-xs text-gray-500">0 = Off, 5 = Unlimited</p>
-                        </div>
-                    </div>
-
-                    <div id="planesContent" class="tab-content hidden">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-left">
-                            <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="planeSizesToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="planeSizesToggle" class="font-medium text-gray-700">Different Plane Sizes</label>
-                                    <p class="text-gray-500 text-xs">Small, medium, & large planes.</p>
-                                </div>
-                            </div>
-                             <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="vipToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="vipToggle" class="font-medium text-gray-700">VIP Planes</label>
-                                    <p class="text-gray-500 text-xs">Fast, high-value (purple).</p>
-                                </div>
-                            </div>
-                             <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="cargoToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="cargoToggle" class="font-medium text-gray-700">Cargo Planes</label>
-                                    <p class="text-gray-500 text-xs">Slow, valuable (green).</p>
-                                </div>
-                            </div>
-                             <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="emergencyToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="emergencyToggle" class="font-medium text-gray-700">Emergency Planes</label>
-                                    <p class="text-gray-500 text-xs">Urgent, high-risk (red).</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div id="effectsContent" class="tab-content hidden">
-                         <div class="grid grid-cols-2 gap-4 text-left">
-                            <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="visualEffectsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="visualEffectsToggle" class="font-medium text-gray-700">Visual FX</label>
-                                </div>
-                            </div>
-                            <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="soundEffectsToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="soundEffectsToggle" class="font-medium text-gray-700">Sound FX</label>
-                                </div>
-                            </div>
-                             <div class="relative flex items-start">
-                                <div class="flex items-center h-5">
-                                    <input id="musicToggle" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                </div>
-                                <div class="ml-3 text-sm">
-                                    <label for="musicToggle" class="font-medium text-gray-700">Music</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="text-center pt-6 border-t border-gray-200 mt-6">
+                    <div id="difficultyContainer" class="text-center pt-6 border-t border-gray-200 mt-6">
                         <p class="text-lg">Total Difficulty Multiplier: <span id="difficultyLabel" class="font-bold">x1.5</span></p>
                     </div>
 
@@ -422,7 +448,8 @@
             visualEffectsToggle, soundEffectsToggle, musicToggle, goAroundsToggle, runwayClosuresToggle, dayNightCycleToggle, stormsToggle,
             dayNightIndicator, sunIcon, moonIcon, walletDisplay, purchasePlaneBtn, purchaseRunwayBtn, godModeToggle,
             zoomInButton, zoomOutButton, hangarSlotsIndicator, sameColorCollisionToggle, differentColorCollisionToggle,
-            purchaseTowerBtn, purchaseGlideScopeBtn, continuePlayingButton, closeLevelCompleteButton, tipButton;
+            purchaseTowerBtn, purchaseGlideScopeBtn, continuePlayingButton, closeLevelCompleteButton, tipButton,
+            campaignModeBtn, designerModeBtn, settingsTabContainer, difficultyContainer;
         
         // =================================================================================
         // Game State Variables
@@ -479,6 +506,8 @@
         // =================================================================================
         let db, auth, userId;
         let highestLevel = 1;
+        let gameMode = 'designer'; // 'designer' or 'campaign'
+        let tempGameMode = 'designer'; // For UI selection before saving
         let settings = {
             speed: 50,
             spawnRate: 50,
@@ -1798,7 +1827,7 @@
                             }
                         } else if (plane.hasBeenOnScreen && (plane.x < -WORLD_BOUNDARY - 100 || plane.x > WORLD_BOUNDARY + 100 || plane.y < -WORLD_BOUNDARY - 100 || plane.y > WORLD_BOUNDARY + 100)) {
                              if (plane.type === 'emergency') {
-                                gameOverReason = "An emergency plane went off-radar!";
+                                 gameOverReason = "An emergency plane went off-radar!";
                              }
                         } else {
                             gameOverReason = "An improper landing approach occurred!";
@@ -1899,6 +1928,11 @@
             resizeCanvas();
             
             level = startLevel; // Set level first to calculate runways
+            
+            if (gameMode === 'campaign') {
+                applyCampaignSettings(level);
+            }
+
             simultaneousPlanes = getNumRunwaysForLevel(level); // Set hangar slots based on runways
             levelCompleteContinue = false;
 
@@ -2207,6 +2241,11 @@
         function openSettings(isInitial = false) {
             if(!isInitial) playSound('uiClick', 'C4');
             pauseGame();
+            
+            // Set temp mode for UI
+            tempGameMode = gameMode;
+            updateModeSelectionUI();
+
             planeSpeedSlider.value = settings.speed;
             spawnRateSlider.value = settings.spawnRate;
             fuelToggle.checked = settings.fuelSystem;
@@ -2240,32 +2279,37 @@
         }
         
         function calculateDifficultyMultiplier() {
-            let multiplier = 0.5 + (parseInt(settings.speed) / 100) * 1.0 + (parseInt(settings.spawnRate) / 100) * 1.0;
-            if (settings.fuelSystem) multiplier += 0.3;
-            if (settings.wind) multiplier += 0.3;
-            if (settings.clouds) multiplier += 0.1;
-            if (settings.planeSizes) multiplier += 0.2;
-            if (settings.realisticLanding) multiplier += 0.5;
-            if (settings.vipPlanes) multiplier += 0.2;
-            if (settings.cargoPlanes) multiplier += 0.2;
-            if (settings.emergencyPlanes) multiplier += 0.4;
-            if (!settings.visualEffects) multiplier += 0.1;
-            if (settings.goArounds) multiplier -= 0.2;
-            if (settings.runwayClosures) multiplier += 0.4;
-            if (settings.dayNightCycleToggle) multiplier += 0.2;
-            if (settings.stormsToggle) multiplier += 0.4;
-            if (settings.sameColorCollision) multiplier += 0.3;
-            if (settings.differentColorCollision) multiplier += 0.2;
+            let currentSettings = settings;
+            if (gameMode === 'campaign' && gameRunning) {
+                currentSettings = getCampaignLevelSettings(level);
+            }
+
+            let multiplier = 0.5 + (parseInt(currentSettings.speed) / 100) * 1.0 + (parseInt(currentSettings.spawnRate) / 100) * 1.0;
+            if (currentSettings.fuelSystem) multiplier += 0.3;
+            if (currentSettings.wind) multiplier += 0.3;
+            if (currentSettings.clouds) multiplier += 0.1;
+            if (currentSettings.planeSizes) multiplier += 0.2;
+            if (currentSettings.realisticLanding) multiplier += 0.5;
+            if (currentSettings.vipPlanes) multiplier += 0.2;
+            if (currentSettings.cargoPlanes) multiplier += 0.2;
+            if (currentSettings.emergencyPlanes) multiplier += 0.4;
+            if (!currentSettings.visualEffects) multiplier += 0.1;
+            if (currentSettings.goArounds) multiplier -= 0.2;
+            if (currentSettings.runwayClosures) multiplier += 0.4;
+            if (currentSettings.dayNightCycleToggle) multiplier += 0.2;
+            if (currentSettings.stormsToggle) multiplier += 0.4;
+            if (currentSettings.sameColorCollision) multiplier += 0.3;
+            if (currentSettings.differentColorCollision) multiplier += 0.2;
             
-            const holdingValue = parseInt(settings.holdingPattern);
+            const holdingValue = parseInt(currentSettings.holdingPattern);
             if (holdingValue === 0) {
                 multiplier += 0.5;
             } else if (holdingValue < 5) {
                 multiplier += (5 - holdingValue) * 0.1;
             }
 
-            if (!settings.coins) multiplier += 0.2;
-            if (settings.godMode) multiplier = 0.1;
+            if (!currentSettings.coins) multiplier += 0.2;
+            if (currentSettings.godMode) multiplier = 0.1;
             return multiplier;
         }
 
@@ -2341,19 +2385,24 @@
 
         function updateActiveFeaturesDisplay() {
             activeFeaturesList.innerHTML = '';
+            let currentSettings = settings;
+            if (gameMode === 'campaign') {
+                currentSettings = getCampaignLevelSettings(level);
+            }
+
             const features = [
                 { name: `Hangar Slots: ${simultaneousPlanes}`, enabled: true},
                 { name: 'Tower Control', enabled: towerControlActive },
                 { name: 'Glide Scope', enabled: glideScopeActive },
-                { name: 'Fuel System', enabled: settings.fuelSystem }, { name: 'Global Wind', enabled: settings.wind }, { name: 'Aesthetic Clouds', enabled: settings.clouds },
-                { name: 'Plane Sizes', enabled: settings.planeSizes }, { name: 'Realistic Landing', enabled: settings.realisticLanding }, { name: 'VIP Planes', enabled: settings.vipPlanes },
-                { name: 'Cargo Planes', enabled: settings.cargoPlanes }, { name: 'Emergency Planes', enabled: settings.emergencyPlanes },
-                { name: 'Visual FX', enabled: settings.visualEffects }, { name: 'Sound FX', enabled: settings.soundEffects }, { name: 'Music', enabled: settings.music },
-                { name: 'Go-Arounds', enabled: settings.goArounds}, { name: 'Runway Closures', enabled: settings.runwayClosures }, 
-                { name: 'Day/Night Cycle', enabled: settings.dayNightCycleToggle }, { name: 'Storms', enabled: settings.stormsToggle },
-                { name: 'Same Color Collisions', enabled: settings.sameColorCollision },
-                { name: 'Different Color Collisions', enabled: settings.differentColorCollision },
-                { name: 'GOD MODE', enabled: settings.godMode}
+                { name: 'Fuel System', enabled: currentSettings.fuelSystem }, { name: 'Global Wind', enabled: currentSettings.wind }, { name: 'Aesthetic Clouds', enabled: currentSettings.clouds },
+                { name: 'Plane Sizes', enabled: currentSettings.planeSizes }, { name: 'Realistic Landing', enabled: currentSettings.realisticLanding }, { name: 'VIP Planes', enabled: currentSettings.vipPlanes },
+                { name: 'Cargo Planes', enabled: currentSettings.cargoPlanes }, { name: 'Emergency Planes', enabled: currentSettings.emergencyPlanes },
+                { name: 'Visual FX', enabled: currentSettings.visualEffects }, { name: 'Sound FX', enabled: currentSettings.soundEffects }, { name: 'Music', enabled: currentSettings.music },
+                { name: 'Go-Arounds', enabled: currentSettings.goArounds}, { name: 'Runway Closures', enabled: currentSettings.runwayClosures }, 
+                { name: 'Day/Night Cycle', enabled: currentSettings.dayNightCycleToggle }, { name: 'Storms', enabled: currentSettings.stormsToggle },
+                { name: 'Same Color Collisions', enabled: currentSettings.sameColorCollision },
+                { name: 'Different Color Collisions', enabled: currentSettings.differentColorCollision },
+                { name: 'GOD MODE', enabled: currentSettings.godMode}
             ];
             features.forEach(feature => {
                 if (feature.enabled) {
@@ -2621,6 +2670,10 @@
             sameColorCollisionToggle = document.getElementById('sameColorCollisionToggle');
             differentColorCollisionToggle = document.getElementById('differentColorCollisionToggle');
             tipButton = document.getElementById('tipButton');
+            campaignModeBtn = document.getElementById('campaignModeBtn');
+            designerModeBtn = document.getElementById('designerModeBtn');
+            settingsTabContainer = document.getElementById('settingsTabContainer');
+            difficultyContainer = document.getElementById('difficultyContainer');
 
             window.addEventListener('resize', resizeCanvas);
             canvas.addEventListener('mousedown', handlePointerDown);
@@ -2652,11 +2705,14 @@
             levelSelectButton.addEventListener('click', openLevelSelect);
             closeLevelSelectButton.addEventListener('click', closeLevelSelect);
             settingsButton.addEventListener('click', () => openSettings(false));
+            
             saveAndRestartButton.addEventListener('click', () => {
                 playSound('uiConfirm', 'E4');
+                gameMode = tempGameMode; // Commit the selected mode
                 settingsModal.classList.add('hidden');
-                resetGame(1, true);
+                resetGame(1, false); // Always restart from level 1 with a fresh wallet on mode change/save
             });
+
             closeSettingsButton.addEventListener('click', () => {
                 playSound('uiClick', 'A3');
                 settingsModal.classList.add('hidden');
@@ -2745,6 +2801,16 @@
                         content.id === `${tabId}Content` ? content.classList.remove('hidden') : content.classList.add('hidden');
                     });
                 });
+            });
+
+            campaignModeBtn.addEventListener('click', () => {
+                tempGameMode = 'campaign';
+                updateModeSelectionUI();
+            });
+
+            designerModeBtn.addEventListener('click', () => {
+                tempGameMode = 'designer';
+                updateModeSelectionUI();
             });
 
             purchasePlaneBtn.addEventListener('click', () => {
@@ -2853,6 +2919,66 @@
             }
             effects.push({ type, particles });
         }
+
+        // --- Campaign Mode Logic ---
+        function getCampaignLevelSettings(lvl) {
+            const baseSettings = {
+                speed: 30 + lvl * 3,
+                spawnRate: 30 + lvl * 3,
+                fuelSystem: false,
+                wind: false,
+                clouds: true,
+                holdingPattern: 1,
+                coins: false,
+                planeSizes: false,
+                realisticLanding: false,
+                vipPlanes: false,
+                cargoPlanes: false,
+                emergencyPlanes: false,
+                visualEffects: true,
+                soundEffects: settings.soundEffects, // Persist sound settings
+                music: settings.music, // Persist music settings
+                goArounds: false,
+                runwayClosures: false,
+                dayNightCycleToggle: false,
+                stormsToggle: false,
+                godMode: false,
+                sameColorCollision: false,
+                differentColorCollision: true,
+            };
+
+            if (lvl >= 2) baseSettings.planeSizes = true;
+            if (lvl >= 3) baseSettings.wind = true;
+            if (lvl >= 4) baseSettings.vipPlanes = true;
+            if (lvl >= 5) baseSettings.dayNightCycleToggle = true;
+            if (lvl >= 6) baseSettings.runwayClosures = true;
+            if (lvl >= 7) baseSettings.cargoPlanes = true;
+            if (lvl >= 8) baseSettings.emergencyPlanes = true;
+            if (lvl >= 9) baseSettings.stormsToggle = true;
+            if (lvl >= 10) baseSettings.realisticLanding = true;
+
+            return baseSettings;
+        }
+
+        function applyCampaignSettings(lvl) {
+            const campaignSettings = getCampaignLevelSettings(lvl);
+            Object.assign(settings, campaignSettings);
+        }
+
+        function updateModeSelectionUI() {
+            if (tempGameMode === 'campaign') {
+                campaignModeBtn.classList.add('active');
+                designerModeBtn.classList.remove('active');
+                settingsTabContainer.classList.add('disabled');
+                difficultyContainer.classList.add('disabled');
+            } else {
+                designerModeBtn.classList.add('active');
+                campaignModeBtn.classList.remove('active');
+                settingsTabContainer.classList.remove('disabled');
+                difficultyContainer.classList.remove('disabled');
+            }
+        }
+
     </script>
 </body>
 </html>
